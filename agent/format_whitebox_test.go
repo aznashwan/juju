@@ -112,7 +112,6 @@ func assertFileExists(c *gc.C, path string) {
 		c.Assert(fileInfo.Mode().Perm(), gc.Equals, os.FileMode(0666))
 	}
 
-	c.Assert(fileInfo.Mode().Perm(), gc.Equals, os.FileMode(0600))
 	c.Assert(fileInfo.Size(), jc.GreaterThan, 0)
 }
 

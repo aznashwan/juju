@@ -35,7 +35,18 @@ func (s *format_1_18Suite) TestMissingAttributes(c *gc.C) {
 	readConfig, err := ReadConfig(configPath)
 	c.Assert(err, gc.IsNil)
 	c.Assert(readConfig.UpgradedToVersion(), gc.Equals, version.MustParse("1.16.0"))
-	c.Assert(readConfig.LogDir(), gc.Equals, "/var/log/juju")
+	os, oserr := version.GetOSFromSeries(version.Current.series)
+
+  switch os {
+  case version.Ubuntu:
+    c.Assert(readConfig.LogDir(), gc.Equals, "/var/log/juju")
+  case version.Windows:
+    c.Assert(readConfig.LogDir(), gc.Equals, "C:/Juju/log/juju")
+  default:
+    c.Assert(os, gc.Equals, Unknown)
+    c.Assert(oserr, gc.ErrorMatches, fmt.Sprintf("invalid series %q", version.Current.series))
+  }
+  
 	c.Assert(readConfig.DataDir(), gc.Equals, "/var/lib/juju")
 	c.Assert(readConfig.PreferIPv6(), jc.IsFalse)
 }

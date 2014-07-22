@@ -44,7 +44,6 @@ func (s *format_1_18Suite) TestMissingAttributes(c *gc.C) {
   case version.Windows:
     c.Assert(readConfig.LogDir(), gc.Equals, "C:/Juju/log/juju")
   default:
-    c.Assert(os, gc.Equals, version.Unknown)
     c.Assert(oserr, gc.ErrorMatches, fmt.Sprintf("invalid series %q", version.Current.Series))
   }
 

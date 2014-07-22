@@ -48,7 +48,6 @@ func (s *format_1_16Suite) TestMissingAttributes(c *gc.C) {
 		c.Assert(readConfig.DataDir(), gc.Equals, "C:/Juju/lib/juju")
 	default:
 		c.Assert(oserr, gc.ErrorMatches, fmt.Sprintf("invalid series %q", version.Current.Series))
-
 	}
 
 	// Test data doesn't include a StateServerKey so StateServingInfoxfree

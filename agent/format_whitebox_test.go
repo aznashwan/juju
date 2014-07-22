@@ -102,6 +102,16 @@ func assertFileExists(c *gc.C, path string) {
 	fileInfo, err := os.Stat(path)
 	c.Assert(err, gc.IsNil)
 	c.Assert(fileInfo.Mode().IsRegular(), jc.IsTrue)
+
+	os, err := version.GetOSFromSeries(version.Current.Series)
+	c.Assert(err, gc.IsNil)
+	switch os {
+	case version.Ubuntu:
+		c.Assert(fileInfo.Mode().Perm(), gc.Equals, os.FileMode(0600))
+	case version.Windows:
+		c.Assert(fileInfo.Mode().Perm(), gc.Equals, os.FileMode(0666))
+	}
+
 	c.Assert(fileInfo.Mode().Perm(), gc.Equals, os.FileMode(0600))
 	c.Assert(fileInfo.Size(), jc.GreaterThan, 0)
 }

@@ -57,7 +57,7 @@ func (s *identitySuite) TestWriteSystemIdentityFile(c *gc.C) {
 	fi, err := os.Stat(conf.SystemIdentityPath())
 	c.Assert(err, gc.IsNil)
 
-	os, oserr := version.GetOSFromSeries(version.Current.Series)
+	ostype, oserr := version.GetOSFromSeries(version.Current.Series)
 	c.Check(oserr, gc.IsNil)
 	switch os {
 	case version.Ubuntu:
@@ -65,7 +65,7 @@ func (s *identitySuite) TestWriteSystemIdentityFile(c *gc.C) {
 	case version.Windows:
 		c.Check(fi.Mode().Perm(), gc.Equals, os.FileMode(0666))
 	}
-	
+
 	// ensure that file is deleted when SystemIdentity is empty
 	info := servingInfo
 	info.SystemIdentity = ""

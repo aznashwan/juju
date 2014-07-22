@@ -426,9 +426,19 @@ func (*suite) TestAttributes(c *gc.C) {
 	conf, err := agent.NewAgentConfig(attributeParams)
 	c.Assert(err, gc.IsNil)
 	c.Assert(conf.DataDir(), gc.Equals, "/data/dir")
-	c.Assert(conf.SystemIdentityPath(), gc.Equals, "/data/dir/system-identity")
+
+	os, oserr := version.GetOSFromSeries(version.Current.Series)
+	c.Assert(oserr, gc.IsNil)
+	switch os {
+	case version.Ubuntu:
+		c.Assert(conf.SystemIdentityPath(), gc.Equals, "/data/dir/system-identity")
+		c.Assert(conf.Dir(), gc.Equals, "/data/dir/agents/machine-1")
+	case version.Windows:
+		c.Assert(conf.SystemIdentityPath(), gc.Equals, "\\data\\dir\\system-identity")
+		c.Assert(conf.Dir(), gc.Equals, "\\data\\dir\\agents\\machine-1")
+	}
+
 	c.Assert(conf.Tag(), gc.Equals, names.NewMachineTag("1"))
-	c.Assert(conf.Dir(), gc.Equals, "/data/dir/agents/machine-1")
 	c.Assert(conf.Nonce(), gc.Equals, "a nonce")
 	c.Assert(conf.UpgradedToVersion(), jc.DeepEquals, version.Current.Number)
 }

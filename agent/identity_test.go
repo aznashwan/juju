@@ -59,7 +59,7 @@ func (s *identitySuite) TestWriteSystemIdentityFile(c *gc.C) {
 
 	ostype, oserr := version.GetOSFromSeries(version.Current.Series)
 	c.Check(oserr, gc.IsNil)
-	switch os {
+	switch ostype {
 	case version.Ubuntu:
 		c.Check(fi.Mode().Perm(), gc.Equals, os.FileMode(0600))
 	case version.Windows:

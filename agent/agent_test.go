@@ -432,12 +432,11 @@ func (*suite) TestAttributes(c *gc.C) {
 	switch os {
 	case version.Ubuntu:
 		c.Assert(conf.SystemIdentityPath(), gc.Equals, "/data/dir/system-identity")
-		c.Assert(conf.Dir(), gc.Equals, "/data/dir/agents/machine-1")
 	case version.Windows:
 		c.Assert(conf.SystemIdentityPath(), gc.Equals, "\\data\\dir\\system-identity")
-		c.Assert(conf.Dir(), gc.Equals, "\\data\\dir\\agents\\machine-1")
 	}
 
+	c.Assert(conf.Dir(), gc.Equals, "/data/dir/agents/machine-1")
 	c.Assert(conf.Tag(), gc.Equals, names.NewMachineTag("1"))
 	c.Assert(conf.Nonce(), gc.Equals, "a nonce")
 	c.Assert(conf.UpgradedToVersion(), jc.DeepEquals, version.Current.Number)

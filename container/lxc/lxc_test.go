@@ -329,8 +329,15 @@ func (s *LxcSuite) TestCreateContainerWithCloneMountsAndAutostarts(c *gc.C) {
 	autostartLink := lxc.RestartSymlink(name)
 	config, err := ioutil.ReadFile(lxc.ContainerConfigFilename(name))
 	c.Assert(err, gc.IsNil)
-	mountLine := "lxc.mount.entry=/var/log/juju var/log/juju none defaults,bind 0 0"
-	c.Assert(string(config), jc.Contains, mountLine)
+	mountLineUbuntu := "lxc.mount.entry=/var/log/juju var/log/juju none defaults,bind 0 0"
+	mountLineWindows := "lxc.mount.entry=C:/Juju/log/juju var/log/juju none defaults,bind 0 0"
+	ostype, _ := version.GetOSFromSeries(version.Current.Series)
+	switch ostype {
+	case version.Ubuntu:
+		c.Assert(string(config), jc.Contains, mountLineUbuntu)
+	case version.Windows:
+		c.Assert(string(config), jc.Contains, mountLineWindows)
+	}
 	c.Assert(autostartLink, jc.IsSymlink)
 }
 

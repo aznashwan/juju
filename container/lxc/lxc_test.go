@@ -439,7 +439,7 @@ lxc.start.auto = 1
 lxc.mount.entry=C:/Juju/log/juju var/log/juju none defaults,bind 0 0
 `
 	ostype, _ := version.GetOSFromSeries(version.Current.Series)
-	switch os {
+	switch ostype {
 	case version.Ubuntu:
 		c.Assert(string(config), gc.Equals, expectedUbuntu)
 	case version.Windows:

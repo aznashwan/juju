@@ -21,6 +21,7 @@ import (
 	"launchpad.net/goyaml"
 
 	"github.com/juju/juju/agent"
+	"github.com/juju/juju/version"
 	"github.com/juju/juju/container"
 	"github.com/juju/juju/container/lxc"
 	"github.com/juju/juju/container/lxc/mock"
@@ -423,14 +424,27 @@ func (s *LxcSuite) TestCreateContainerNoRestartDir(c *gc.C) {
 	autostartLink := lxc.RestartSymlink(name)
 	config, err := ioutil.ReadFile(lxc.ContainerConfigFilename(name))
 	c.Assert(err, gc.IsNil)
-	expected := `
+	expectedUbuntu := `
 lxc.network.type = veth
 lxc.network.link = nic42
 lxc.network.flags = up
 lxc.start.auto = 1
 lxc.mount.entry=/var/log/juju var/log/juju none defaults,bind 0 0
 `
-	c.Assert(string(config), gc.Equals, expected)
+	expectedWindows := `
+lxc.network.type = veth
+lxc.network.link = nic42
+lxc.network.flags = up
+lxc.start.auto = 1
+lxc.mount.entry=C:/Juju/log/juju var/log/juju none defaults,bind 0 0
+`
+	ostype, _ := version.GetOSFromSeries(version.Current.Series)
+	switch os {
+	case version.Ubuntu:
+		c.Assert(string(config), gc.Equals, expectedUbuntu)
+	case version.Windows:
+		c.Assert(string(config), gc.Equals, expectedWindows)
+	}
 	c.Assert(autostartLink, jc.DoesNotExist)
 }
 

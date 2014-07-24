@@ -258,5 +258,5 @@ func (s *filestorageSuite) TestRelativePath(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	url, err := reader.URL("")
 	c.Assert(err, gc.IsNil)
-	c.Assert(url, gc.Equals, "file://"+dir+"/a")
+	c.Assert(url, gc.Equals, "file://" + filepath.Join(dir, "a"))
 }

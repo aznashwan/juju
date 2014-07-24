@@ -6,6 +6,7 @@ package testing_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 
 	gitjujutesting "github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
@@ -23,9 +24,15 @@ type fakeHomeSuite struct {
 var _ = gc.Suite(&fakeHomeSuite{})
 
 func (s *fakeHomeSuite) SetUpTest(c *gc.C) {
-	utils.SetHome("/home/eric")
-	os.Setenv("JUJU_HOME", "/home/eric/juju")
-	osenv.SetJujuHome("/home/eric/juju")
+	if runtime.GOOS == "windows" {
+		utils.SetHome(winHome)
+		os.Setenv("JUJU_HOME", winJujuHome)
+		osenv.SetJujuHome(winJujuHome)
+	} else {
+		utils.SetHome(linuxHome)
+		os.Setenv("JUJU_HOME", linuxJujuHome)
+		osenv.SetJujuHome(linuxJujuHome)
+	}
 
 	s.FakeJujuHomeSuite.SetUpTest(c)
 }
@@ -34,9 +41,15 @@ func (s *fakeHomeSuite) TearDownTest(c *gc.C) {
 	s.FakeJujuHomeSuite.TearDownTest(c)
 
 	// Test that the environment is restored.
-	c.Assert(utils.Home(), gc.Equals, "/home/eric")
-	c.Assert(os.Getenv("JUJU_HOME"), gc.Equals, "/home/eric/juju")
-	c.Assert(osenv.JujuHome(), gc.Equals, "/home/eric/juju")
+	if runtime.GOOS == "windows" {
+		c.Assert(utils.Home(), gc.Equals, winHome)
+		c.Assert(os.Getenv("JUJU_HOME"), gc.Equals, winJujuHome)
+		c.Assert(osenv.JujuHome(), gc.Equals, winJujuHome)
+	} else {
+		c.Assert(utils.Home(), gc.Equals, linuxHome)
+		c.Assert(os.Getenv("JUJU_HOME"), gc.Equals, linuxJujuHome)
+		c.Assert(osenv.JujuHome(), gc.Equals, linuxJujuHome)
+	}
 }
 
 func (s *fakeHomeSuite) TestFakeHomeSetsUpJujuHome(c *gc.C) {

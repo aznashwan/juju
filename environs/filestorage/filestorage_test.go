@@ -22,6 +22,7 @@ import (
 
 	"github.com/juju/juju/environs/filestorage"
 	"github.com/juju/juju/environs/storage"
+	"github.com/juju/juju/version"
 )
 
 func TestPackage(t *testing.T) {
@@ -56,26 +57,48 @@ func (s *filestorageSuite) createFile(c *gc.C, name string) (fullpath string, da
 }
 
 func (s *filestorageSuite) TestList(c *gc.C) {
-	names := []string{
+	namesUbuntu := []string{
 		"a/b/c",
 		"a/bb",
 		"a/c",
 		"aa",
 		"b/c/d",
 	}
-	for _, name := range names {
+	namesWindows := []string{
+		"a\\b\\c",
+		"a\\bb",
+		"a\\c",
+		"aa",
+		"b\\c\\d",
+	}
+	for _, name := range namesUbuntu {
 		s.createFile(c, name)
 	}
 	type test struct {
 		prefix   string
 		expected []string
 	}
-	for i, test := range []test{
+	testInputUbuntu := []test{
 		{"a", []string{"a/b/c", "a/bb", "a/c", "aa"}},
 		{"a/b", []string{"a/b/c", "a/bb"}},
 		{"a/b/c", []string{"a/b/c"}},
-		{"", names},
-	} {
+		{"", namesUbuntu},
+	}
+	testInputWindows := []test{
+		{"a", []string{"a\\b\\c", "a\\bb", "a\\c", "aa"}},
+		{"a\\b", []string{"a\\b\\c", "a\\bb"}},
+		{"a\\b\\c", []string{"a\\b\\c"}},
+		{"", namesWindows},
+	}
+	ostype, _ := version.GetOSFromSeries(version.Current.Series)
+	var testInput []test
+	switch ostype {
+	case version.Ubuntu:
+		testInput = testInputUbuntu
+	case version.Windows:
+		testInput = testInputWindows
+	}
+	for i, test := range testInput {
 		c.Logf("test %d: prefix=%q", i, test.prefix)
 		files, err := storage.List(s.reader, test.prefix)
 		c.Assert(err, gc.IsNil)

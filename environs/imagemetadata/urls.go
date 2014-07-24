@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"path/filepath"
 
 	"github.com/juju/utils"
 
@@ -67,7 +68,7 @@ func ImageMetadataURL(source, stream string) (string, error) {
 		if stream != "" && stream != ReleasedStream {
 			cloudImagesPath = stream
 		}
-		source = fmt.Sprintf("%s/%s", source, cloudImagesPath)
+		source = filepath.Join(source, cloudImagesPath)
 	}
 	// If source is a raw directory, we need to append the file:// prefix
 	// so it can be used as a URL.
@@ -79,7 +80,7 @@ func ImageMetadataURL(source, stream string) (string, error) {
 	if u.Scheme == "" {
 		defaultURL = "file://" + defaultURL
 		if !strings.HasSuffix(defaultURL, "/"+storage.BaseImagesPath) {
-			defaultURL = fmt.Sprintf("%s/%s", defaultURL, storage.BaseImagesPath)
+			defaultURL = filepath.Join(defaultURL, storage.BaseImagesPath)
 		}
 	}
 	return defaultURL, nil

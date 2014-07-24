@@ -20,12 +20,18 @@ type varsSuite struct {
 var _ = gc.Suite(&varsSuite{})
 
 func (s *varsSuite) TestJujuHomeWin(c *gc.C) {
+	if runtime.GOOS != "windows" {
+		c.Skip("No need to test juju windows home under other OS's")
+	}
 	path := `P:\FooBar\AppData`
 	s.PatchEnvironment("APPDATA", path)
 	c.Assert(osenv.JujuHomeWin(), gc.Equals, filepath.Join(path, "Juju"))
 }
 
 func (s *varsSuite) TestJujuHomeLinux(c *gc.C) {
+	if runtime.GOOS != "linux" {
+		c.Skip("No need to test juju linux home under other OS's")
+	}
 	path := `/foo/bar/baz/`
 	s.PatchEnvironment("HOME", path)
 	c.Assert(osenv.JujuHomeLinux(), gc.Equals, filepath.Join(path, ".juju"))

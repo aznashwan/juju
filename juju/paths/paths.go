@@ -23,10 +23,10 @@ var linuxVals = map[osVarType]string{
 }
 
 var winVals = map[osVarType]string{
-	tmpDir:  "C:/Juju/tmp",
-	logDir:  "C:/Juju/log",
-	dataDir: "C:/Juju/lib/juju",
-	jujuRun: "C:/Juju/bin/juju-run",
+	tmpDir:  "C:\\Juju\\tmp",
+	logDir:  "C:\\Juju\\log",
+	dataDir: "C:\\Juju\\lib\\juju",
+	jujuRun: "C:\\Juju\\bin\\juju-run",
 }
 
 // osVal will lookup the value of the key valname

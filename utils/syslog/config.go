@@ -5,7 +5,6 @@ package syslog
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -41,6 +40,7 @@ const tagOffset = len("juju-") + 1
 //
 // Instead we need to mess with the global FileCreateMode.  We set it back
 // to the ubuntu default after defining our rule.
+
 const stateServerRsyslogTemplate = `
 $ModLoad imuxsock
 $ModLoad imfile
@@ -71,7 +71,7 @@ $FileCreateMode 0600
 
 $RuleSet remote
 $FileCreateMode 0600
-:syslogtag, startswith, "juju{{namespace}}-" {{logDir}}/all-machines.log;JujuLogFormat{{namespace}}
+:syslogtag, startswith, "juju{{namespace}}-" {{machineLogFile}};JujuLogFormat{{namespace}}
 :syslogtag, startswith, "juju{{namespace}}-" ~
 $FileCreateMode 0600
 
@@ -247,21 +247,22 @@ func (slConfig *SyslogConfig) Render() ([]byte, error) {
 	}
 
 	var logFilePath = func() string {
-		return fmt.Sprintf("%s/%s.log", slConfig.LogDir, slConfig.LogFileName)
+		return filepath.Join(slConfig.LogDir, slConfig.LogFileName)
 	}
 
 	t := template.New("")
 	t.Funcs(template.FuncMap{
-		"logfileName":      func() string { return slConfig.LogFileName },
+		"logfileName":      func() string { return filepath.Join(slConfig.LogFileName, "") },
 		"stateServerHosts": stateServerHosts,
 		"logfilePath":      logFilePath,
 		"portNumber":       func() int { return slConfig.Port },
-		"logDir":           func() string { return slConfig.LogDir },
-		"namespace":        func() string { return slConfig.Namespace },
+		"logDir":           func() string { return filepath.Join(slConfig.LogDir, "") },
+		"namespace":        func() string { return filepath.Join(slConfig.Namespace, "") },
 		"tagStart":         func() int { return tagOffset + len(slConfig.Namespace) },
 		"tlsCACertPath":    slConfig.CACertPath,
 		"tlsCertPath":      slConfig.ServerCertPath,
 		"tlsKeyPath":       slConfig.ServerKeyPath,
+		"machineLogFile":   func() string { return filepath.Join(slConfig.LogDir, "all-machines.log") },
 	})
 
 	// Process the rsyslog config template and echo to the conf file.

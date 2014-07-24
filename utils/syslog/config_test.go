@@ -45,7 +45,7 @@ func (s *syslogConfigSuite) TestAccumulateConfigRender(c *gc.C) {
 	s.assertRsyslogConfigContents(
 		c,
 		syslogConfigRenderer,
-		syslogtesting.ExpectedAccumulateSyslogConf(c, "some-machine", "", 8888),
+		syslogtesting.ExpectedAccumulateSyslogConf(c, "some-machine", agent.DefaultLogDir, "", 8888),
 	)
 }
 
@@ -61,7 +61,7 @@ func (s *syslogConfigSuite) TestAccumulateConfigWrite(c *gc.C) {
 	c.Assert(
 		string(syslogConfData),
 		gc.Equals,
-		syslogtesting.ExpectedAccumulateSyslogConf(c, "some-machine", "", 8888),
+		syslogtesting.ExpectedAccumulateSyslogConf(c, "some-machine", agent.DefaultLogDir, "", 8888),
 	)
 }
 
@@ -70,7 +70,7 @@ func (s *syslogConfigSuite) TestAccumulateConfigRenderWithNamespace(c *gc.C) {
 	syslogConfigRenderer.LogDir += "-namespace"
 	s.assertRsyslogConfigContents(
 		c, syslogConfigRenderer, syslogtesting.ExpectedAccumulateSyslogConf(
-			c, "some-machine", "namespace", 8888,
+			c, "some-machine", agent.DefaultLogDir, "namespace", 8888,
 		),
 	)
 }

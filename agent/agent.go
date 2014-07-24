@@ -40,7 +40,7 @@ var dataDir = paths.MustSucceed(paths.DataDir(version.Current.Series))
 
 // DefaultLogDir defines the default log directory for juju agents.
 // It's defined as a variable so it could be overridden in tests.
-var DefaultLogDir = path.Join(logDir, "juju")
+var DefaultLogDir = filepath.Join(logDir, "juju")
 
 // DefaultDataDir defines the default data directory for juju agents.
 // It's defined as a variable so it could be overridden in tests.

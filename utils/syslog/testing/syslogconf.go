@@ -5,7 +5,10 @@ package testing
 
 import (
 	"bytes"
+	"fmt"
 	"text/template"
+
+	"github.com/juju/juju/version"
 
 	gc "launchpad.net/gocheck"
 )
@@ -27,7 +30,7 @@ $ActionQueueFileName {{.MachineTag}}{{.Namespace}}_0
 $ActionResumeRetryCount -1
 $ActionQueueSaveOnShutdown on
 $DefaultNetstreamDriver gtls
-$DefaultNetstreamDriverCAFile /var/log/juju{{.Namespace}}/ca-cert.pem
+$DefaultNetstreamDriverCAFile {{.LogDir}}{{.Namespace}}{{.Separator}}ca-cert.pem
 $ActionSendStreamDriverAuthMode anon
 $ActionSendStreamDriverMode 1 # run driver in TLS-only mode
 
@@ -40,22 +43,22 @@ $FileCreateMode 0600
 
 $RuleSet remote
 $FileCreateMode 0600
-:syslogtag, startswith, "juju{{.Namespace}}-" /var/log/juju{{.Namespace}}/all-machines.log;JujuLogFormat{{.Namespace}}
+:syslogtag, startswith, "juju{{.Namespace}}-" {{.LogDir}}{{.Namespace}}{{.Separator}}all-machines.log;JujuLogFormat{{.Namespace}}
 :syslogtag, startswith, "juju{{.Namespace}}-" ~
 $FileCreateMode 0600
 
 $InputFilePersistStateInterval 50
 $InputFilePollInterval 5
-$InputFileName /var/log/juju{{.Namespace}}/{{.MachineTag}}.log
+$InputFileName {{.LogDir}}{{.Namespace}}{{.Separator}}{{.MachineTag}}
 $InputFileTag juju{{.Namespace}}-{{.MachineTag}}:
 $InputFileStateFile {{.MachineTag}}{{.Namespace}}
 $InputRunFileMonitor
 
 $ModLoad imtcp
 $DefaultNetstreamDriver gtls
-$DefaultNetstreamDriverCAFile /var/log/juju{{.Namespace}}/ca-cert.pem
-$DefaultNetstreamDriverCertFile /var/log/juju{{.Namespace}}/rsyslog-cert.pem
-$DefaultNetstreamDriverKeyFile /var/log/juju{{.Namespace}}/rsyslog-key.pem
+$DefaultNetstreamDriverCAFile {{.LogDir}}{{.Namespace}}{{.Separator}}ca-cert.pem
+$DefaultNetstreamDriverCertFile {{.LogDir}}{{.Namespace}}{{.Separator}}rsyslog-cert.pem
+$DefaultNetstreamDriverKeyFile {{.LogDir}}{{.Namespace}}{{.Separator}}rsyslog-key.pem
 $InputTCPServerStreamDriverAuthMode anon
 $InputTCPServerStreamDriverMode 1 # run driver in TLS-only mode
 
@@ -73,20 +76,31 @@ type templateArgs struct {
 	BootstrapIP string
 	Port        int
 	Offset      int
+	Separator   string
 }
 
 // ExpectedAccumulateSyslogConf returns the expected content for a rsyslog file on a state server.
-func ExpectedAccumulateSyslogConf(c *gc.C, machineTag, namespace string, port int) string {
+func ExpectedAccumulateSyslogConf(c *gc.C, machineTag, logDir, namespace string, port int) string {
 	if namespace != "" {
 		namespace = "-" + namespace
+	}
+	var separator string
+	os, _ := version.GetOSFromSeries(version.Current.Series)
+	switch os {
+	case version.Ubuntu:
+		separator = "/"
+	case version.Windows:
+		separator = "\\"
 	}
 	t := template.Must(template.New("").Parse(expectedAccumulateSyslogConfTemplate))
 	var conf bytes.Buffer
 	err := t.Execute(&conf, templateArgs{
 		MachineTag: machineTag,
 		Namespace:  namespace,
+		LogDir:     logDir,
 		Offset:     len("juju-") + len(namespace) + 1,
 		Port:       port,
+		Separator:  separator,
 	})
 	c.Assert(err, gc.IsNil)
 	return conf.String()
@@ -98,7 +112,7 @@ $ModLoad imfile
 
 $InputFilePersistStateInterval 50
 $InputFilePollInterval 5
-$InputFileName {{.LogDir}}/{{.MachineTag}}.log
+$InputFileName {{.LogDir}}{{.Separator}}{{.MachineTag}}
 $InputFileTag juju{{.Namespace}}-{{.MachineTag}}:
 $InputFileStateFile {{.MachineTag}}{{.Namespace}}
 $InputRunFileMonitor
@@ -109,7 +123,7 @@ $ActionQueueFileName {{.MachineTag}}{{.Namespace}}_0
 $ActionResumeRetryCount -1
 $ActionQueueSaveOnShutdown on
 $DefaultNetstreamDriver gtls
-$DefaultNetstreamDriverCAFile {{.LogDir}}/ca-cert.pem
+$DefaultNetstreamDriverCAFile {{.LogDir}}{{.Separator}}ca-cert.pem
 $ActionSendStreamDriverAuthMode anon
 $ActionSendStreamDriverMode 1 # run driver in TLS-only mode
 
@@ -122,9 +136,19 @@ $template LongTagForwardFormat,"<%PRI%>%TIMESTAMP:::date-rfc3339% %HOSTNAME% %sy
 
 // ExpectedForwardSyslogConf returns the expected content for a rsyslog file on a host machine.
 func ExpectedForwardSyslogConf(c *gc.C, machineTag, logDir, namespace, bootstrapIP string, port int) string {
+	fmt.Printf("%s", logDir)
 	if namespace != "" {
 		namespace = "-" + namespace
 	}
+	var separator string
+	os, _ := version.GetOSFromSeries(version.Current.Series)
+	switch os {
+	case version.Ubuntu:
+		separator = "/"
+	case version.Windows:
+		separator = "\\"
+	}
+
 	t := template.Must(template.New("").Parse(expectedForwardSyslogConfTemplate))
 	var conf bytes.Buffer
 	err := t.Execute(&conf, templateArgs{
@@ -133,6 +157,7 @@ func ExpectedForwardSyslogConf(c *gc.C, machineTag, logDir, namespace, bootstrap
 		Namespace:   namespace,
 		BootstrapIP: bootstrapIP,
 		Port:        port,
+		Separator:   separator,
 	})
 	c.Assert(err, gc.IsNil)
 	return conf.String()

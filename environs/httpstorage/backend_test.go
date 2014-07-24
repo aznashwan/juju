@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"runtime"
 	stdtesting "testing"
 
 	jc "github.com/juju/testing/checkers"
@@ -206,7 +207,7 @@ func testGet(c *gc.C, client *http.Client, url string) {
 	}
 }
 
-var listTests = []testCase{
+var listTestsUbuntu = []testCase{
 	{
 		// List with a full filename.
 		name:  "foo",
@@ -251,6 +252,37 @@ var listTests = []testCase{
 	},
 }
 
+var listTestsWindows = []testCase{
+	{
+		name:  "foo",
+		found: []string{"foo"},
+	},
+	{
+		name:  "ba",
+		found: []string{"bar", "baz"},
+	},
+	{
+		name:  "inner/",
+		found: []string{"inner\\barin", "inner\\bazin", "inner\\fooin"},
+	},
+	{
+		name:  "inner/ba",
+		found: []string{"inner\\barin", "inner\\bazin"},
+	},
+	{
+		name:  "",
+		found: []string{"bar", "baz", "foo", "inner\\barin", "inner\\bazin", "inner\\fooin", "yadda"},
+	},
+	{
+		name:  "zzz",
+		found: []string{""},
+	},
+	{
+		name:  "../",
+		found: []string{"bar", "baz", "foo", "inner\\barin", "inner\\bazin", "inner\\fooin", "yadda"},
+	},
+}
+
 func (s *backendSuite) TestList(c *gc.C) {
 	// Test listing file of a storage.
 	listener, url, dataDir := startServer(c)
@@ -273,6 +305,13 @@ func testList(c *gc.C, client *http.Client, url string) {
 		c.Assert(err, gc.IsNil)
 		names := strings.Split(buf.String(), "\n")
 		c.Assert(names, gc.DeepEquals, tc.found)
+	}
+	var listTests []testCase
+	switch runtime.GOOS {
+	case "linux":
+		listTests = listTestsUbuntu
+	case "windows":
+		listTests = listTestsWindows
 	}
 	for i, tc := range listTests {
 		c.Logf("test %d", i)

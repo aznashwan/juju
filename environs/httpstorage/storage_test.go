@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"runtime"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
@@ -85,10 +86,22 @@ func (s *storageSuite) TestPersistence(c *gc.C) {
 	defer listener.Close()
 
 	stor := httpstorage.Client(listener.Addr().String())
-	names := []string{
+	namesUbuntu := []string{
 		"aa",
 		"zzz/aa",
 		"zzz/bb",
+	}
+	namesWindows := []string{
+		"aa",
+		"zzz\\aa",
+		"zzz\\bb",
+	}
+	var names []string
+	switch runtime.GOOS {
+	case "linux":
+		names = namesUbuntu
+	case "windows":
+		names = namesWindows
 	}
 	for _, name := range names {
 		checkFileDoesNotExist(c, stor, name)
@@ -96,7 +109,12 @@ func (s *storageSuite) TestPersistence(c *gc.C) {
 	}
 	checkList(c, stor, "", names)
 	checkList(c, stor, "a", []string{"aa"})
-	checkList(c, stor, "zzz/", []string{"zzz/aa", "zzz/bb"})
+	switch runtime.GOOS {
+	case "linux":
+		checkList(c, stor, "zzz/", []string{"zzz/aa", "zzz/bb"})
+	case "windows":
+		checkList(c, stor, "zzz/", []string{"zzz\\aa", "zzz\\bb"})
+	}
 
 	storage2 := httpstorage.Client(listener.Addr().String())
 	for _, name := range names {

@@ -5,6 +5,7 @@ package environs_test
 
 import (
 	"time"
+	"runtime"
 
 	"github.com/juju/names"
 	jc "github.com/juju/testing/checkers"
@@ -230,7 +231,7 @@ func (*CloudInitSuite) testUserData(c *gc.C, bootstrap bool) {
 		// for MAAS. MAAS needs to configure and then bounce the
 		// network interfaces, which would sever the SSH connection
 		// in the synchronous bootstrap phase.
-		c.Check(config, gc.DeepEquals, map[interface{}]interface{}{
+		expectedUbuntu := map[interface{}]interface{}{
 			"output": map[interface{}]interface{}{
 				"all": "| tee -a /var/log/cloud-init-output.log",
 			},
@@ -241,7 +242,25 @@ func (*CloudInitSuite) testUserData(c *gc.C, bootstrap bool) {
 				"printf '%s\\n' '5432' > '/var/lib/juju/nonce.txt'",
 			},
 			"ssh_authorized_keys": []interface{}{"wheredidileavemykeys"},
-		})
+		}
+		expectedWindows := map[interface{}]interface{}{
+			"output": map[interface{}]interface{}{
+				"all": "| tee -a C:/Juju/log/cloud-init-output.log",
+			},
+			"runcmd": []interface{}{
+				"script1", "script2",
+				"set -xe",
+				"install -D -m 644 /dev/null 'C:/Juju/lib/juju/nonce.txt'",
+				"printf '%s\\n' '5432' > 'C:/Juju/lib/juju/nonce.txt'",
+			},
+			"ssh_authorized_keys": []interface{}{"wheredidileavemykeys"},
+		}
+		switch runtime.GOOS {
+		case "linux":
+			c.Check(config, gc.DeepEquals, expectedUbuntu)
+		case "windows":
+			c.Check(config, gc.DeepEquals, expectedWindows)
+		}
 	} else {
 		// Just check that the cloudinit config looks good,
 		// and that there are more runcmds than the additional

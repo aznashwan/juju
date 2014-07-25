@@ -182,22 +182,10 @@ func (t *ToolsSuite) TestChangeAgentTools(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	gotTools, err := agenttools.ChangeAgentTools(t.dataDir, "testagent", testTools.Version)
-	ostype, _ := version.GetOSFromSeries(version.Current.Series)
-	switch ostype {
-	case version.Ubuntu:
-		c.Assert(err, gc.IsNil)
-		c.Assert(*gotTools, gc.Equals, *testTools)	
-		assertDirNames(c, t.toolsDir(), []string{"1.2.3-quantal-amd64", "testagent"})
-		assertDirNames(c, agenttools.ToolsDir(t.dataDir, "testagent"), []string{"jujuc", "jujud", toolsFile})
-	case version.Windows:
-		// after deep deep tracking you will find that you cannot rename a symlink in Windows for some reason, therefore the above crashes
-		c.Assert(err, gc.NotNil)
-		c.Assert(gotTools, gc.IsNil)
-		// testing for "/testagent" like above will fail considering that agentools.ChangeAgentTools has failed
-		assertDirNames(c, t.toolsDir(), []string{"1.2.3-quantal-amd64"})
-		// and this one will fail completely because "/testagent" doesn't exist (deleted pre-emptively by ChangeAgentTools>symlink.Replace)
-		// assertDirNames(c, agenttools.ToolsDir(t.dataDir, "testagent"), []string{"jujuc", "jujud", toolsFile})
-	}
+	c.Assert(err, gc.IsNil)
+	c.Assert(*gotTools, gc.Equals, *testTools)	
+	assertDirNames(c, t.toolsDir(), []string{"1.2.3-quantal-amd64", "testagent"})
+	assertDirNames(c, agenttools.ToolsDir(t.dataDir, "testagent"), []string{"jujuc", "jujud", toolsFile})
 	
 	// Upgrade again to check that the link replacement logic works ok.
 	files2 := []*testing.TarFile{
@@ -215,19 +203,10 @@ func (t *ToolsSuite) TestChangeAgentTools(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	gotTools, err = agenttools.ChangeAgentTools(t.dataDir, "testagent", tools2.Version)
-	switch ostype {
-	case version.Ubuntu:
-		c.Assert(err, gc.IsNil)
-		c.Assert(*gotTools, gc.Equals, *tools2)
-		assertDirNames(c, t.toolsDir(), []string{"1.2.3-quantal-amd64", "1.2.4-quantal-amd64", "testagent"})
-		assertDirNames(c, agenttools.ToolsDir(t.dataDir, "testagent"), []string{"quantal", "amd64", toolsFile})
-	case version.Windows:
-		// above comments apply here too
-		c.Assert(err, gc.NotNil)
-		c.Assert(gotTools, gc.IsNil)
-		assertDirNames(c, t.toolsDir(), []string{"1.2.3-quantal-amd64", "1.2.4-quantal-amd64"})
-		// assertDirNames(c, agenttools.ToolsDir(t.dataDir, "testagent"), []string{"quantal", "amd64", toolsFile})
-	}
+	c.Assert(err, gc.IsNil)
+	c.Assert(*gotTools, gc.Equals, *tools2)
+	assertDirNames(c, t.toolsDir(), []string{"1.2.3-quantal-amd64", "1.2.4-quantal-amd64", "testagent"})
+	assertDirNames(c, agenttools.ToolsDir(t.dataDir, "testagent"), []string{"quantal", "amd64", toolsFile})
 }
 
 func (t *ToolsSuite) TestSharedToolsDir(c *gc.C) {

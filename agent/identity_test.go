@@ -75,11 +75,6 @@ func (s *identitySuite) TestWriteSystemIdentityFile(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	fi, err = os.Stat(conf.SystemIdentityPath())
-
-	switch ostype {
-	case version.Ubuntu:
-		c.Assert(err, gc.ErrorMatches, `stat .*: no such file or directory`)
-	case version.Windows:
-		c.Assert(err, gc.NotNil)
+	c.Assert(err, gc.ErrorMatches, `stat .*: no such file or directory`)
 	}
 }

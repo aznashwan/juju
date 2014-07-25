@@ -6,6 +6,7 @@ package environs_test
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -245,7 +246,12 @@ environments:
 
 	info, err = os.Lstat(outfile)
 	c.Assert(err, gc.IsNil)
-	c.Assert(info.Mode().Perm(), gc.Equals, os.FileMode(0600))
+	switch runtime.GOOS {
+	case "linux":
+		c.Assert(info.Mode().Perm(), gc.Equals, os.FileMode(0600))
+	case "windows":
+		c.Assert(info.Mode().Perm(), gc.Equals, os.FileMode(0666))
+	}
 
 	info, err = os.Lstat(filepath.Dir(outfile))
 	c.Assert(err, gc.IsNil)

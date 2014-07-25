@@ -76,5 +76,4 @@ func (s *identitySuite) TestWriteSystemIdentityFile(c *gc.C) {
 
 	fi, err = os.Stat(conf.SystemIdentityPath())
 	c.Assert(err, gc.ErrorMatches, `stat .*: no such file or directory`)
-	}
 }

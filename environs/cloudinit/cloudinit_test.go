@@ -81,6 +81,7 @@ var stateServingInfo = &params.StateServingInfo{
 
 // Each test gives a cloudinit config - we check the
 // output to see if it looks correct.
+// These hard-coded trial sripts will burn to the ground considering they contain a lot of Linux-specific commands/parameters
 var cloudinitTests = []cloudinitTest{
 	{
 		// precise state server
@@ -434,6 +435,7 @@ func (*cloudinitSuite) TestCloudInit(c *gc.C) {
 		c.Check(configKeyValues["apt_update"], gc.Equals, true)
 
 		scripts := getScripts(configKeyValues)
+		// these will fail because 
 		assertScriptMatch(c, scripts, test.expectScripts, !test.inexactMatch)
 		if test.cfg.Config != nil {
 			checkEnvConfig(c, test.cfg.Config, configKeyValues, scripts)

@@ -4,6 +4,7 @@
 package manual
 
 import (
+	"runtime"
 	"strings"
 
 	"github.com/juju/errors"
@@ -126,7 +127,12 @@ exit 0
 }
 
 func (s *environSuite) TestLocalStorageConfig(c *gc.C) {
-	c.Assert(s.env.StorageDir(), gc.Equals, "/var/lib/juju/storage")
+	switch runtime.GOOS {
+	case "linux":
+		c.Assert(s.env.StorageDir(), gc.Equals, "/var/lib/juju/storage")
+	case "windows":
+		c.Assert(s.env.StorageDir(), gc.Equals, "C:\\Juju\\lib\\juju\\storage")
+	}
 	c.Assert(s.env.cfg.storageListenAddr(), gc.Equals, ":8040")
 	c.Assert(s.env.StorageAddr(), gc.Equals, s.env.cfg.storageListenAddr())
 	c.Assert(s.env.SharedStorageAddr(), gc.Equals, "")

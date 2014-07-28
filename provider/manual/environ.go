@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -325,7 +326,7 @@ func (e *manualEnviron) StorageAddr() string {
 }
 
 func (e *manualEnviron) StorageDir() string {
-	return path.Join(agent.DefaultDataDir, storageSubdir)
+	return filepath.Join(agent.DefaultDataDir, storageSubdir)
 }
 
 func (e *manualEnviron) SharedStorageAddr() string {

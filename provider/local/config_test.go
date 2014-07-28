@@ -80,6 +80,7 @@ func (s *configSuite) TestValidateConfigWithRootDir(c *gc.C) {
 	c.Assert(unknownAttrs["root-dir"], gc.Equals, root)
 }
 
+// this fails because utils.Home() returns exactly the user home but localconfig eventually gets you to environprovider.go lines 219-227 where some vodoo shit happens and and the cfg name gets suffixed to the path
 func (s *configSuite) TestValidateConfigWithTildeInRootDir(c *gc.C) {
 	valid := localConfig(c, map[string]interface{}{
 		"root-dir": "~/.juju/foo",

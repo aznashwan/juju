@@ -250,8 +250,8 @@ func (*CloudInitSuite) testUserData(c *gc.C, bootstrap bool) {
 			"runcmd": []interface{}{
 				"script1", "script2",
 				"set -xe",
-				"install -D -m 644 /dev/null 'C:/Juju/lib/juju/nonce.txt'",
-				"printf '%s\\n' '5432' > 'C:/Juju/lib/juju/nonce.txt'",
+				"install -D -m 644 /dev/null 'C:\\Juju\\lib\\juju\\nonce.txt'",
+				"printf '%s\\n' '5432' > 'C:\\Juju\\lib\\juju\\nonce.txt'",
 			},
 			"ssh_authorized_keys": []interface{}{"wheredidileavemykeys"},
 		}

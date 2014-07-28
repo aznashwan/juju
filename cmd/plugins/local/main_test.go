@@ -65,6 +65,7 @@ func (s *mainSuite) TestRunAsRootCallsSudoIfNotRoot(c *gc.C) {
 	// the command needs to be in the path...
 	testing.PatchExecutableAsEchoArgs(c, s, "juju-magic")
 	magicPath, err := exec.LookPath("juju-magic")
+	// fixed by patching gocheck.MkDir() as testing.PatchExecutableAsEchoArgs eventually calls c.MkDir()
 	c.Assert(err, gc.IsNil)
 	callIgnored := func(*cmd.Context) error {
 		panic("unreachable")

@@ -60,6 +60,7 @@ func (s *suite) testDownload(c *gc.C, hostnameVerification utils.SSLHostnameVeri
 	defer status.File.Close()
 
 	dir, _ := filepath.Split(status.File.Name())
+	// this fails due to gocheck.MkDir()'s bad habits, resulting in tmp being screwy but the result being actually correct
 	c.Assert(filepath.Clean(dir), gc.Equals, tmp)
 	assertFileContents(c, status.File, "archive")
 }

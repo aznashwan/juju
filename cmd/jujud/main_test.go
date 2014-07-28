@@ -213,6 +213,7 @@ func (s *JujuCMainSuite) SetUpSuite(c *gc.C) {
 		return &RemoteCommand{}, nil
 	}
 	s.sockPath = filepath.Join(c.MkDir(), "test.sock")
+	// this fails because jujuc.NewServer() calls sockets.Listen() which doesn't have a Windows implementation
 	srv, err := jujuc.NewServer(factory, s.sockPath)
 	c.Assert(err, gc.IsNil)
 	s.server = srv

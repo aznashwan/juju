@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	stdtesting "testing"
 
@@ -28,7 +29,12 @@ import (
 	"github.com/juju/juju/version"
 )
 
-func Test(t *stdtesting.T) { gc.TestingT(t) }
+func Test(t *stdtesting.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping. Needs to be rewritten for windows")
+	}
+	gc.TestingT(t)
+}
 
 type MongoSuite struct {
 	coretesting.BaseSuite

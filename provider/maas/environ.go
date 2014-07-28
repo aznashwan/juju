@@ -493,6 +493,7 @@ func (environ *maasEnviron) StartInstance(args environs.StartInstanceParams) (
 
 // newCloudinitConfig creates a cloudinit.Config structure
 // suitable as a base for initialising a MAAS node.
+// this does a lot of very linux-specific stuff
 func newCloudinitConfig(hostname string, iface string) (*cloudinit.Config, error) {
 	info := machineInfo{hostname}
 	runCmd, err := info.cloudinitRunCmd()

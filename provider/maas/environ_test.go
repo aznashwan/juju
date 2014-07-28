@@ -225,6 +225,7 @@ sed -i 's/iface eth0 inet dhcp/iface eth0 inet manual/' /etc/network/interfaces.
 	"ifup br0",
 }
 
+// calls a lot of linux-specific things
 func (*environSuite) TestNewCloudinitConfig(c *gc.C) {
 	cloudcfg, err := maas.NewCloudinitConfig("testing.invalid", "eth0")
 	c.Assert(err, gc.IsNil)

@@ -20,6 +20,7 @@ import (
 // We do not use SIGTERM as SIGTERM is the
 // default signal used to initiate a graceful
 // shutdown.
+// NOTE: this signal is not supported under Windows
 const TerminationSignal = syscall.SIGABRT
 
 // NewWorker returns a worker that wais for a

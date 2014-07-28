@@ -53,6 +53,7 @@ func (s *TerminationWorkerSuite) TestSignal(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	defer proc.Release()
 	err = proc.Signal(terminationworker.TerminationSignal)
+	// this fails Under windows because terminationWorker.TerminationSignal is not a supported signal
 	c.Assert(err, gc.IsNil)
 	err = w.Wait()
 	c.Assert(err, gc.Equals, worker.ErrTerminateAgent)

@@ -59,11 +59,10 @@ func (s *identitySuite) TestWriteSystemIdentityFile(c *gc.C) {
 
 	ostype, oserr := version.GetOSFromSeries(version.Current.Series)
 	c.Check(oserr, gc.IsNil)
-	switch ostype {
-	case version.Ubuntu:
+	if ostype == version.Ubuntu {
 		c.Check(fi.Mode().Perm(), gc.Equals, os.FileMode(0600))
-	case version.Windows:
-		c.Check(fi.Mode().Perm(), gc.Equals, os.FileMode(0666))
+	} else {
+		c.Log("Skipped file permission check under Windows.")
 	}
 
 	// ensure that file is deleted when SystemIdentity is empty

@@ -5,6 +5,7 @@ package azure
 
 import (
 	"io/ioutil"
+	"runtime"
 	"os"
 
 	jc "github.com/juju/testing/checkers"
@@ -38,7 +39,11 @@ func (*certFileSuite) TestNewTempCertFileRestrictsAccessToFile(c *gc.C) {
 	defer certFile.Delete()
 	info, err := os.Stat(certFile.Path())
 	c.Assert(err, gc.IsNil)
-	c.Check(info.Mode().Perm(), gc.Equals, os.FileMode(0600))
+	if runtime.GOOS == "linux" {
+		c.Check(info.Mode().Perm(), gc.Equals, os.FileMode(0600))
+	} else {
+		c.Log("Skipped file permission check under Windows.")
+	}
 }
 
 func (*certFileSuite) TestNewTempCertFileRestrictsAccessToDir(c *gc.C) {

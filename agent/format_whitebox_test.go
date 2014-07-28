@@ -105,12 +105,13 @@ func assertFileExists(c *gc.C, path string) {
 
 	ostype, err := version.GetOSFromSeries(version.Current.Series)
 	c.Assert(err, gc.IsNil)
-	switch ostype {
-	case version.Ubuntu:
+	if ostype == version.Ubuntu {
 		c.Assert(fileInfo.Mode().Perm(), gc.Equals, os.FileMode(0600))
-	case version.Windows:
-		c.Assert(fileInfo.Mode().Perm(), gc.Equals, os.FileMode(0666))
+	} else {
+		c.Log("Skipped file permission check under Windows.")
 	}
+	
+
 
 	c.Assert(fileInfo.Size(), jc.GreaterThan, 0)
 }

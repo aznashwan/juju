@@ -246,11 +246,10 @@ environments:
 
 	info, err = os.Lstat(outfile)
 	c.Assert(err, gc.IsNil)
-	switch runtime.GOOS {
-	case "linux":
+	if runtime.GOOS == "linux" {
 		c.Assert(info.Mode().Perm(), gc.Equals, os.FileMode(0600))
-	case "windows":
-		c.Assert(info.Mode().Perm(), gc.Equals, os.FileMode(0666))
+	} else {
+		c.Log("Skipped file permission check under Windows.")
 	}
 
 	info, err = os.Lstat(filepath.Dir(outfile))

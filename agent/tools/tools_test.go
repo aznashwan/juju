@@ -181,6 +181,7 @@ func (t *ToolsSuite) TestChangeAgentTools(c *gc.C) {
 	err := agenttools.UnpackTools(t.dataDir, testTools, bytes.NewReader(data))
 	c.Assert(err, gc.IsNil)
 
+	// ChangeAgentTools calls symplink.Replace which calls os.Rename in file_windows.go which fails under Windows due to some OS-specific lacking in Golang
 	gotTools, err := agenttools.ChangeAgentTools(t.dataDir, "testagent", testTools.Version)
 	c.Assert(err, gc.IsNil)
 	c.Assert(*gotTools, gc.Equals, *testTools)

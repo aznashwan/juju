@@ -5,6 +5,7 @@ package debug_test
 
 import (
 	"testing"
+	"runtime"
 
 	gc "launchpad.net/gocheck"
 
@@ -25,6 +26,12 @@ func (*DebugHooksCommonSuite) TestHooksContext(c *gc.C) {
 	c.Assert(ctx.Unit, gc.Equals, "foo/8")
 	c.Assert(ctx.FlockDir, gc.Equals, "/tmp")
 	ctx.FlockDir = "/var/lib/juju"
-	c.Assert(ctx.ClientFileLock(), gc.Equals, "/var/lib/juju/juju-unit-foo-8-debug-hooks")
-	c.Assert(ctx.ClientExitFileLock(), gc.Equals, "/var/lib/juju/juju-unit-foo-8-debug-hooks-exit")
+	switch runtime.GOOS {
+	case "linux":
+		c.Assert(ctx.ClientFileLock(), gc.Equals, "/var/lib/juju/juju-unit-foo-8-debug-hooks")
+		c.Assert(ctx.ClientExitFileLock(), gc.Equals, "/var/lib/juju/juju-unit-foo-8-debug-hooks-exit")
+	case "windows":
+		c.Assert(ctx.ClientFileLock(), gc.Equals, "\\var\\lib\\juju\\juju-unit-foo-8-debug-hooks")
+		c.Assert(ctx.ClientExitFileLock(), gc.Equals, "\\var\\lib\\juju\\juju-unit-foo-8-debug-hooks-exit")
+	}
 }

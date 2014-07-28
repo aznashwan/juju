@@ -127,6 +127,7 @@ func (s *ValidateImageMetadataSuite) assertEc2LocalMetadataUsingEnvironment(c *g
 		envcmd.Wrap(&ValidateImageMetadataCommand{}), ctx, []string{"-e", "ec2", "-d", s.metadataDir, "-m", stream},
 	)
 	c.Assert(code, gc.Equals, 0)
+	// fixed by modifying gocheck's MkDir() which is put by coretesting.Context() inside ctx
 	errOut := ctx.Stdout.(*bytes.Buffer).String()
 	strippedOut := strings.Replace(errOut, "\n", "", -1)
 	c.Check(

@@ -6,6 +6,7 @@ package configstore_test
 import (
 	"fmt"
 	"io/ioutil"
+	"runtime"
 	"os"
 	"path/filepath"
 	"strings"
@@ -127,6 +128,9 @@ func (*diskStoreSuite) TestReadNotFound(c *gc.C) {
 }
 
 func (*diskStoreSuite) TestWriteFails(c *gc.C) {
+	if runtime.GOOS == "windows" {
+		c.Skip("Skipped \"TestWriteFails\" due to inappropriate permission checking on Windows")
+	}
 	dir := c.MkDir()
 	store, err := configstore.NewDisk(dir)
 	c.Assert(err, gc.IsNil)
@@ -138,6 +142,7 @@ func (*diskStoreSuite) TestWriteFails(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	err = info.Write()
+
 	c.Assert(err, gc.ErrorMatches, ".* permission denied")
 
 	// Make the directory writable again so that gocheck can clean it up.

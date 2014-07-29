@@ -31,6 +31,8 @@ const bzr_config = `[DEFAULT]
 email = testing <test@example.com>
 `
 
+//SetUp needs to be changed for windows
+//because bazaar configuration files path is not relative
 func (s *BzrSuite) SetUpTest(c *gc.C) {
 	s.BaseSuite.SetUpTest(c)
 	bzrdir := c.MkDir()
@@ -53,7 +55,11 @@ func (s *BzrSuite) TestNewFindsRoot(c *gc.C) {
 	// found along the way.
 	path, err := filepath.EvalSymlinks(s.b.Location())
 	c.Assert(err, gc.IsNil)
-	c.Assert(b.Location(), gc.Equals, path)
+	//It also needs to expand symlinks on the branch path for windows
+	//compatibility
+	bpath, err := filepath.EvalSymlinks(b.Location())
+	c.Assert(err, gc.IsNil)
+	c.Assert(bpath, gc.Equals, path)
 }
 
 func (s *BzrSuite) TestJoin(c *gc.C) {

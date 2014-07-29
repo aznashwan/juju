@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -25,7 +27,15 @@ func New(location string) *Branch {
 	if _, err := os.Stat(location); err == nil {
 		stdout, _, err := b.bzr("root")
 		if err == nil {
-			b.location = strings.TrimRight(string(stdout), "\n")
+			switch runtime.GOOS {
+			case "windows":
+				//bzr root returns paths with /'s
+				//We can correct this by filepath.Joining it with an empty
+				//string
+				b.location = strings.TrimRight(filepath.Join(string(stdout), ""), "\r\n")
+			case "linux":
+				b.location = strings.TrimRight(string(stdout), "\n")
+			}
 		}
 	}
 	return b

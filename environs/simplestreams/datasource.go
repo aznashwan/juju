@@ -60,6 +60,8 @@ func (u *urlDataSource) GoString() string {
 // It also doesn't use path.Join because that normalizes slashes, and you need
 // to keep both slashes in 'http://'.
 func urlJoin(baseURL, relpath string) string {
+	// this joins paths with forced slashes resulting in wonky paths
+	// NOTE: cannot be implemented with filepath.Join() as it would modify the http,file:// leading slashes on Windows
 	if strings.HasSuffix(baseURL, "/") {
 		return baseURL + relpath
 	}

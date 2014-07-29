@@ -6,7 +6,6 @@ package manual
 import (
 	"fmt"
 	"net"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -133,7 +132,8 @@ func (e *manualEnviron) StateServerInstances() ([]instance.Id, error) {
 	// if the agents directory exists. Note that we cannot test the
 	// root data directory, as that is created in the process of
 	// initialising sshstorage.
-	agentsDir := path.Join(agent.DefaultDataDir, "agents")
+	// path.Join() used here resulting in a lot of wonky paths 
+	agentsDir := filepath.Join(agent.DefaultDataDir, "agents")
 	stdin := fmt.Sprintf("test -d %s || echo 1", utils.ShQuote(agentsDir))
 	out, err := runSSHCommand("ubuntu@"+e.cfg.bootstrapHost(), []string{"/bin/bash"}, stdin)
 	out = strings.TrimSpace(out)
@@ -167,7 +167,8 @@ func (e *manualEnviron) SetConfig(cfg *config.Config) error {
 		var stor storage.Storage
 		if envConfig.useSSHStorage() {
 			storageDir := e.StorageDir()
-			storageTmpdir := path.Join(agent.DefaultDataDir, storageTmpSubdir)
+			// path.Join() used here too
+			storageTmpdir := filepath.Join(agent.DefaultDataDir, storageTmpSubdir)
 			stor, err = newSSHStorage("ubuntu@"+e.cfg.bootstrapHost(), storageDir, storageTmpdir)
 			if err != nil {
 				return fmt.Errorf("initialising SSH storage failed: %v", err)

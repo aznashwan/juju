@@ -78,6 +78,8 @@ func ImageMetadataURL(source, stream string) (string, error) {
 	}
 	if u.Scheme == "" {
 		defaultURL = "file://" + defaultURL
+		// this joins with slashes by default resulting in wonky filepath URLs
+		// NOTE: cannot be fixed with filepath.Join() as it would alter the leading file:// slashes under Windows
 		if !strings.HasSuffix(defaultURL, "/"+storage.BaseImagesPath) {
 			defaultURL = fmt.Sprintf("%s/%s", defaultURL, storage.BaseImagesPath)
 		}

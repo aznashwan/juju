@@ -12,7 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/juju/errors"
@@ -29,14 +29,16 @@ const dirPerm = 0755
 // store binaries for the given version of the juju tools
 // within the dataDir directory.
 func SharedToolsDir(dataDir string, vers version.Binary) string {
-	return path.Join(dataDir, "tools", vers.String())
+	// modified path.Join() to filepath.Join here
+	return filepath.Join(dataDir, "tools", vers.String())
 }
 
 // ToolsDir returns the directory that is used/ to store binaries for
 // the tools used by the given agent within the given dataDir directory.
 // Conventionally it is a symbolic link to the actual tools directory.
 func ToolsDir(dataDir, agentName string) string {
-	return path.Join(dataDir, "tools", agentName)
+	// modified path.Join() to filepath.Join here
+	return filepath.Join(dataDir, "tools", agentName)
 }
 
 // UnpackTools reads a set of juju tools in gzipped tar-archive
@@ -70,7 +72,8 @@ func UnpackTools(dataDir string, tools *coretools.Tools, r io.Reader) (err error
 
 	// Make a temporary directory in the tools directory,
 	// first ensuring that the tools directory exists.
-	toolsDir := path.Join(dataDir, "tools")
+	// modified path.Join() to filepath.Join here
+	toolsDir := filepath.Join(dataDir, "tools")
 	err = os.MkdirAll(toolsDir, dirPerm)
 	if err != nil {
 		return err
@@ -101,7 +104,8 @@ func UnpackTools(dataDir string, tools *coretools.Tools, r io.Reader) (err error
 		if hdr.Typeflag != tar.TypeReg {
 			return fmt.Errorf("bad file type %c in file %q in tools archive", hdr.Typeflag, hdr.Name)
 		}
-		name := path.Join(dir, hdr.Name)
+		// modified path.Join() to filepath.Join here
+		name := filepath.Join(dir, hdr.Name)
 		if err := writeFile(name, os.FileMode(hdr.Mode&0777), tr); err != nil {
 			return errors.Annotatef(err, "tar extract %q failed", name)
 		}
@@ -110,7 +114,8 @@ func UnpackTools(dataDir string, tools *coretools.Tools, r io.Reader) (err error
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(path.Join(dir, toolsFile), []byte(toolsMetadataData), 0644)
+	// modified path.Join() to filepath.Join here
+	err = ioutil.WriteFile(filepath.Join(dir, toolsFile), []byte(toolsMetadataData), 0644)
 	if err != nil {
 		return err
 	}
@@ -157,7 +162,8 @@ func writeFile(name string, mode os.FileMode, r io.Reader) error {
 // The tools information is json encoded in a text file, "downloaded-tools.txt".
 func ReadTools(dataDir string, vers version.Binary) (*coretools.Tools, error) {
 	dir := SharedToolsDir(dataDir, vers)
-	toolsData, err := ioutil.ReadFile(path.Join(dir, toolsFile))
+	// modified path.Join() to filepath.Join here
+	toolsData, err := ioutil.ReadFile(filepath.Join(dir, toolsFile))
 	if err != nil {
 		return nil, fmt.Errorf("cannot read tools metadata in tools directory: %v", err)
 	}

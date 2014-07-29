@@ -5,7 +5,7 @@ package environs
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 
 	"github.com/juju/errors"
 	"github.com/juju/names"
@@ -35,7 +35,8 @@ var DataDir = agent.DefaultDataDir
 var logDir = paths.MustSucceed(paths.LogDir(version.Current.Series))
 
 // CloudInitOutputLog is the default cloud-init-output.log file path.
-var CloudInitOutputLog = path.Join(logDir, "cloud-init-output.log")
+// replaced path.Join() with filepath.Join 
+var CloudInitOutputLog = filepath.Join(logDir, "cloud-init-output.log")
 
 // NewMachineConfig sets up a basic machine configuration, for a non-bootstrap
 // node.  You'll still need to supply more information, but this takes care of

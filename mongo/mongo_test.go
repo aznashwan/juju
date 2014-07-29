@@ -29,6 +29,7 @@ import (
 	"github.com/juju/juju/version"
 )
 
+// made all mongo tests to be skipped if on Windows
 func Test(t *stdtesting.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping. Needs to be rewritten for windows")

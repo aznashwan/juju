@@ -22,6 +22,7 @@ var linuxVals = map[osVarType]string{
 	jujuRun: "/usr/local/bin/juju-run",
 }
 
+// made these paths feature backslashes so as to be properly processed
 var winVals = map[osVarType]string{
 	tmpDir:  "C:\\Juju\\tmp",
 	logDir:  "C:\\Juju\\log",

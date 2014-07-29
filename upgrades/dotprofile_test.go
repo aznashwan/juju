@@ -25,8 +25,9 @@ type ensureDotProfileSuite struct {
 var _ = gc.Suite(&ensureDotProfileSuite{})
 
 func (s *ensureDotProfileSuite) SetUpTest(c *gc.C) {
+	// added skippage to this test on Windows as it does not apply
 	if runtime.GOOS == "windows" {
-		c.Skip("Skipping this on windows")
+		c.Skip("Skipping dotprofile tests on Windows")
 	}
 	s.FakeJujuHomeSuite.SetUpTest(c)
 

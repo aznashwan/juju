@@ -246,6 +246,7 @@ environments:
 
 	info, err = os.Lstat(outfile)
 	c.Assert(err, gc.IsNil)
+	// skipped file permission check under Windows
 	if runtime.GOOS == "linux" {
 		c.Assert(info.Mode().Perm(), gc.Equals, os.FileMode(0600))
 	} else {

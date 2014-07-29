@@ -326,6 +326,7 @@ func (e *manualEnviron) StorageAddr() string {
 }
 
 func (e *manualEnviron) StorageDir() string {
+	// used filepath.Join() here to allow for better cross-OS compatibility
 	return filepath.Join(agent.DefaultDataDir, storageSubdir)
 }
 

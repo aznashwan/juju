@@ -5,16 +5,15 @@ package ssh_test
 
 import (
 	"testing"
-
-	"github.com/juju/juju/version"
+	"runtime"
 
 	gc "launchpad.net/gocheck"
 )
 
 func TestPackage(t *testing.T) {
-	os, _ := version.GetOSFromSeries(version.Current.Series)
-	if os == version.Windows {
-		t.Skip()
+	// skipped all these tests on Windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping all ssh-related tests on Windows")
 	}
 	gc.TestingT(t)
 }

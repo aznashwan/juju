@@ -187,7 +187,7 @@ func (t *ToolsSuite) TestChangeAgentTools(c *gc.C) {
 	c.Assert(*gotTools, gc.Equals, *testTools)	
 	assertDirNames(c, t.toolsDir(), []string{"1.2.3-quantal-amd64", "testagent"})
 	assertDirNames(c, agenttools.ToolsDir(t.dataDir, "testagent"), []string{"jujuc", "jujud", toolsFile})
-	
+
 	// Upgrade again to check that the link replacement logic works ok.
 	files2 := []*testing.TarFile{
 		testing.NewTarFile("quantal", agenttools.DirPerm, "foo content"),

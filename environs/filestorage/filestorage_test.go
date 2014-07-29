@@ -9,6 +9,7 @@ package filestorage_test
 
 import (
 	"bytes"
+	"runtime"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,7 +23,6 @@ import (
 
 	"github.com/juju/juju/environs/filestorage"
 	"github.com/juju/juju/environs/storage"
-	"github.com/juju/juju/version"
 )
 
 func TestPackage(t *testing.T) {
@@ -56,6 +56,7 @@ func (s *filestorageSuite) createFile(c *gc.C, name string) (fullpath string, da
 	return fullpath, data
 }
 
+// this test was made to account for both OS-es
 func (s *filestorageSuite) TestList(c *gc.C) {
 	namesUbuntu := []string{
 		"a/b/c",
@@ -71,6 +72,7 @@ func (s *filestorageSuite) TestList(c *gc.C) {
 		"aa",
 		"b\\c\\d",
 	}
+	// the creation part will work for both input sets
 	for _, name := range namesUbuntu {
 		s.createFile(c, name)
 	}
@@ -90,12 +92,11 @@ func (s *filestorageSuite) TestList(c *gc.C) {
 		{"a\\b\\c", []string{"a\\b\\c"}},
 		{"", namesWindows},
 	}
-	ostype, _ := version.GetOSFromSeries(version.Current.Series)
 	var testInput []test
-	switch ostype {
-	case version.Ubuntu:
+	switch runtime.GOOS {
+	case "linux":
 		testInput = testInputUbuntu
-	case version.Windows:
+	case "windows":
 		testInput = testInputWindows
 	}
 	for i, test := range testInput {
@@ -258,5 +259,6 @@ func (s *filestorageSuite) TestRelativePath(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	url, err := reader.URL("")
 	c.Assert(err, gc.IsNil)
+	// used filepath.Join() here to make this test compatible with both OS-es
 	c.Assert(url, gc.Equals, "file://" + filepath.Join(dir, "a"))
 }

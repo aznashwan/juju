@@ -127,6 +127,7 @@ exit 0
 }
 
 func (s *environSuite) TestLocalStorageConfig(c *gc.C) {
+	// made test check for OS-specific StorageDir path
 	switch runtime.GOOS {
 	case "linux":
 		c.Assert(s.env.StorageDir(), gc.Equals, "/var/lib/juju/storage")

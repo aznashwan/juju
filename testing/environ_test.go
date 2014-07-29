@@ -24,6 +24,7 @@ type fakeHomeSuite struct {
 var _ = gc.Suite(&fakeHomeSuite{})
 
 func (s *fakeHomeSuite) SetUpTest(c *gc.C) {
+	// made the setup OS-specific
 	if runtime.GOOS == "windows" {
 		utils.SetHome(winHome)
 		os.Setenv("JUJU_HOME", winJujuHome)
@@ -41,6 +42,7 @@ func (s *fakeHomeSuite) TearDownTest(c *gc.C) {
 	s.FakeJujuHomeSuite.TearDownTest(c)
 
 	// Test that the environment is restored.
+	// made the teardown OS-specific
 	if runtime.GOOS == "windows" {
 		c.Assert(utils.Home(), gc.Equals, winHome)
 		c.Assert(os.Getenv("JUJU_HOME"), gc.Equals, winJujuHome)

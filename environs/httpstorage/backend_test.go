@@ -252,6 +252,7 @@ var listTestsUbuntu = []testCase{
 	},
 }
 
+// added the Windows-equivalent expected outputs for testList()
 var listTestsWindows = []testCase{
 	{
 		name:  "foo",
@@ -307,6 +308,7 @@ func testList(c *gc.C, client *http.Client, url string) {
 		c.Assert(names, gc.DeepEquals, tc.found)
 	}
 	var listTests []testCase
+	// made the test run for the specific runtime OS
 	switch runtime.GOOS {
 	case "linux":
 		listTests = listTestsUbuntu

@@ -26,6 +26,8 @@ func (*DebugHooksCommonSuite) TestHooksContext(c *gc.C) {
 	c.Assert(ctx.Unit, gc.Equals, "foo/8")
 	c.Assert(ctx.FlockDir, gc.Equals, "/tmp")
 	ctx.FlockDir = "/var/lib/juju"
+	// made this test OS-specific despite all the inputted paths being Linux specific by default
+	// despite Linux-specific inputs, the test still illustrates that the mechanisms work properly under Windows too
 	switch runtime.GOOS {
 	case "linux":
 		c.Assert(ctx.ClientFileLock(), gc.Equals, "/var/lib/juju/juju-unit-foo-8-debug-hooks")

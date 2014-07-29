@@ -19,6 +19,7 @@ type varsSuite struct {
 
 var _ = gc.Suite(&varsSuite{})
 
+// made these two tandem tests skip appropriately
 func (s *varsSuite) TestJujuHomeWin(c *gc.C) {
 	if runtime.GOOS != "windows" {
 		c.Skip("Skipped \"TestJujuHomeWin\"")

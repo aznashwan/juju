@@ -8,7 +8,6 @@
 package agent
 
 import (
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 
@@ -38,7 +37,9 @@ func (s *format_1_16Suite) TestMissingAttributes(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(readConfig.UpgradedToVersion(), gc.Equals, version.MustParse("1.16.0"))
 
+	// made this test check for attributes OS-specifically
 	os, oserr := version.GetOSFromSeries(version.Current.Series)
+	c.Assert(oserr, gc.IsNil)
 	switch os {
 	case version.Ubuntu:
 		c.Assert(readConfig.LogDir(), gc.Equals, "/var/log/juju")
@@ -46,8 +47,6 @@ func (s *format_1_16Suite) TestMissingAttributes(c *gc.C) {
 	case version.Windows:
 		c.Assert(readConfig.LogDir(), gc.Equals, "C:/Juju/log/juju")
 		c.Assert(readConfig.DataDir(), gc.Equals, "C:/Juju/lib/juju")
-	default:
-		c.Assert(oserr, gc.ErrorMatches, fmt.Sprintf("invalid series %q", version.Current.Series))
 	}
 
 	// Test data doesn't include a StateServerKey so StateServingInfoxfree

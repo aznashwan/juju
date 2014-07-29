@@ -57,8 +57,11 @@ func (s *identitySuite) TestWriteSystemIdentityFile(c *gc.C) {
 	fi, err := os.Stat(conf.SystemIdentityPath())
 	c.Assert(err, gc.IsNil)
 
+	// made this test skip file permission checking under Windows
+	// calling file.Mode().Perm() under Windows leads to the tripling of the
+	// modifier (eg. 0600 -> 0666), but this test is still best skipped
 	ostype, oserr := version.GetOSFromSeries(version.Current.Series)
-	c.Check(oserr, gc.IsNil)
+	c.Assert(oserr, gc.IsNil)
 	if ostype == version.Ubuntu {
 		c.Check(fi.Mode().Perm(), gc.Equals, os.FileMode(0600))
 	} else {

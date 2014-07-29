@@ -5,10 +5,8 @@ package testing
 
 import (
 	"bytes"
-	"fmt"
+	"runtime"
 	"text/template"
-
-	"github.com/juju/juju/version"
 
 	gc "launchpad.net/gocheck"
 )
@@ -136,16 +134,16 @@ $template LongTagForwardFormat,"<%PRI%>%TIMESTAMP:::date-rfc3339% %HOSTNAME% %sy
 
 // ExpectedForwardSyslogConf returns the expected content for a rsyslog file on a host machine.
 func ExpectedForwardSyslogConf(c *gc.C, machineTag, logDir, namespace, bootstrapIP string, port int) string {
-	fmt.Printf("%s", logDir)
+	// a lot of modifications in this file to make this test cross-OS
 	if namespace != "" {
 		namespace = "-" + namespace
 	}
 	var separator string
-	os, _ := version.GetOSFromSeries(version.Current.Series)
-	switch os {
-	case version.Ubuntu:
+	// implemented OS-specific separator
+	switch runtime.GOOS {
+	case "linux":
 		separator = "/"
-	case version.Windows:
+	case "windows":
 		separator = "\\"
 	}
 

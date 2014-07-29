@@ -427,6 +427,7 @@ func (*suite) TestAttributes(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(conf.DataDir(), gc.Equals, "/data/dir")
 
+	// properly checks the data-dir for both OS-es
 	os, oserr := version.GetOSFromSeries(version.Current.Series)
 	c.Assert(oserr, gc.IsNil)
 	switch os {

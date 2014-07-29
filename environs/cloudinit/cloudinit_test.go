@@ -435,7 +435,7 @@ func (*cloudinitSuite) TestCloudInit(c *gc.C) {
 		c.Check(configKeyValues["apt_update"], gc.Equals, true)
 
 		scripts := getScripts(configKeyValues)
-		// these will fail because 
+		// these will fail because of the above marked scripts
 		assertScriptMatch(c, scripts, test.expectScripts, !test.inexactMatch)
 		if test.cfg.Config != nil {
 			checkEnvConfig(c, test.cfg.Config, configKeyValues, scripts)

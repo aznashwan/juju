@@ -51,7 +51,7 @@ func (s *DebugHooksServerSuite) SetUpTest(c *gc.C) {
 	s.PatchEnvironment("JUJU_UNIT_NAME", s.ctx.Unit)
 }
 
-// this test should be skipped on Windows because it uses "tmux"
+// this test should be modified for Windows because it uses "tmux"
 func (s *DebugHooksServerSuite) TestFindSession(c *gc.C) {
 	// Test "tmux has-session" failure. The error
 	// message is the output of tmux has-session.

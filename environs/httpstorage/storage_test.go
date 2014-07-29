@@ -97,6 +97,7 @@ func (s *storageSuite) TestPersistence(c *gc.C) {
 		"zzz\\bb",
 	}
 	var names []string
+	// made this test compatible with both OS-es here
 	switch runtime.GOOS {
 	case "linux":
 		names = namesUbuntu

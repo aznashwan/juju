@@ -40,7 +40,6 @@ const tagOffset = len("juju-") + 1
 //
 // Instead we need to mess with the global FileCreateMode.  We set it back
 // to the ubuntu default after defining our rule.
-
 const stateServerRsyslogTemplate = `
 $ModLoad imuxsock
 $ModLoad imfile

@@ -35,6 +35,7 @@ echo $@ | tee $0.args
 `
 
 func (s *ensureLockDirSuite) SetUpTest(c *gc.C) {
+	// Skipping this test as it need re-writing for windows
 	if runtime.GOOS == "windows" {
 		c.Skip("Needs to be rewritten on windows")
 	}

@@ -8,7 +8,6 @@
 package agent
 
 import (
-  "fmt"
 	"path/filepath"
 
 	jc "github.com/juju/testing/checkers"
@@ -37,7 +36,9 @@ func (s *format_1_18Suite) TestMissingAttributes(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(readConfig.UpgradedToVersion(), gc.Equals, version.MustParse("1.16.0"))
 
+  // made the test check for the attributes OS-specifically
 	os, oserr := version.GetOSFromSeries(version.Current.Series)
+  c.Assert(oserr, gc.IsNil)
   switch os {
   case version.Ubuntu:
     c.Assert(readConfig.LogDir(), gc.Equals, "/var/log/juju")
@@ -45,8 +46,6 @@ func (s *format_1_18Suite) TestMissingAttributes(c *gc.C) {
   case version.Windows:
     c.Assert(readConfig.LogDir(), gc.Equals, "C:/Juju/log/juju")
     c.Assert(readConfig.DataDir(), gc.Equals, "C:/Juju/lib/juju")
-  default:
-    c.Assert(oserr, gc.ErrorMatches, fmt.Sprintf("invalid series %q", version.Current.Series))
   }
   
 	c.Assert(readConfig.PreferIPv6(), jc.IsFalse)

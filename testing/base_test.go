@@ -20,14 +20,16 @@ type TestingBaseSuite struct {
 
 var _ = gc.Suite(&TestingBaseSuite{})
 
+// added appropriate wWindows-specific parameters
 const (
-	winHome       = `C:\home`
-	winJujuHome   = `C:\home\juju`
+	winHome       = `C:\\home`
+	winJujuHome   = `C:\\home\\juju`
 	linuxHome     = "/home/eric"
 	linuxJujuHome = "/home/eric/juju"
 )
 
 func (s *TestingBaseSuite) SetUpTest(c *gc.C) {
+	// made the setup OS-specific
 	if runtime.GOOS == "windows" {
 		utils.SetHome(winHome)
 		os.Setenv("JUJU_HOME", winJujuHome)
@@ -45,6 +47,7 @@ func (s *TestingBaseSuite) TearDownTest(c *gc.C) {
 	s.BaseSuite.TearDownTest(c)
 
 	// Test that the environment is restored.
+	// made the tearsown OS-specific
 	if runtime.GOOS == "windows" {
 		c.Assert(utils.Home(), gc.Equals, winHome)
 		c.Assert(os.Getenv("JUJU_HOME"), gc.Equals, winJujuHome)
@@ -55,6 +58,7 @@ func (s *TestingBaseSuite) TearDownTest(c *gc.C) {
 }
 
 func (s *TestingBaseSuite) TestFakeHomeReplacesEnvironment(c *gc.C) {
+	// made the testing OS-specific
 	if runtime.GOOS == "windows" {
 		c.Assert(utils.Home(), gc.Not(gc.Equals), winHome)
 		c.Assert(os.Getenv("JUJU_HOME"), gc.Equals, "")

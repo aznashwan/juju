@@ -52,7 +52,11 @@ func (*certFileSuite) TestNewTempCertFileRestrictsAccessToDir(c *gc.C) {
 	defer certFile.Delete()
 	info, err := os.Stat(certFile.tempDir)
 	c.Assert(err, gc.IsNil)
-	c.Check(info.Mode().Perm(), gc.Equals, os.FileMode(0700))
+	if runtime.GOOS == "linux" {
+		c.Check(info.Mode().Perm(), gc.Equals, os.FileMode(0700))
+	} else {
+		c.Log("Skipped file permission check under Windows.")
+	}
 }
 
 func (*certFileSuite) TestDeleteRemovesFile(c *gc.C) {

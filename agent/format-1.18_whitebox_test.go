@@ -44,8 +44,8 @@ func (s *format_1_18Suite) TestMissingAttributes(c *gc.C) {
     c.Assert(readConfig.LogDir(), gc.Equals, "/var/log/juju")
     c.Assert(readConfig.DataDir(), gc.Equals, "/var/lib/juju")
   case version.Windows:
-    c.Assert(readConfig.LogDir(), gc.Equals, "C:/Juju/log/juju")
-    c.Assert(readConfig.DataDir(), gc.Equals, "C:/Juju/lib/juju")
+    c.Assert(readConfig.LogDir(), gc.Equals, "C:\\Juju\\log\\juju")
+    c.Assert(readConfig.DataDir(), gc.Equals, "C:\\Juju\\lib\\juju")
   }
 	c.Assert(readConfig.PreferIPv6(), jc.IsFalse)
 }

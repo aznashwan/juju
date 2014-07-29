@@ -33,6 +33,7 @@ func (s *interfaceSuite) TestCreate(c *gc.C) {
 	c.Assert(err, gc.ErrorMatches, `environment "someenv" not found`)
 
 	err = info.Write()
+	// fails here and wherever else gocheck.MkDir() is previously called by info.Write()
 	c.Assert(err, gc.IsNil)
 
 	// Check that we can read it again.

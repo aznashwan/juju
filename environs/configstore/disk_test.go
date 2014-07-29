@@ -171,6 +171,7 @@ func (*diskStoreSuite) TestDestroyRemovesFiles(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	info := store.CreateInfo("someenv")
+	// these keep failing because gocheck.MkDir() makes a bogus file with a bad pathname and thus it cannot be opened
 	err = info.Write()
 	c.Assert(err, gc.IsNil)
 

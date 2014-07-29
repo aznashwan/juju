@@ -4,6 +4,7 @@
 package main
 
 import (
+	"runtime"
 	"strings"
 
 	gc "launchpad.net/gocheck"
@@ -31,6 +32,12 @@ func (suite *HelpToolSuite) TestHelpTool(c *gc.C) {
 	lines := strings.Split(strings.TrimSpace(output), "\n")
 	for i, line := range lines {
 		lines[i] = strings.Fields(line)[0]
+	}
+	// added Windows-specific .exe command extension coverage
+	if runtime.GOOS == "windows" {
+		for _, command := range expectedNames{
+			command = command + ".exe"
+		}
 	}
 	c.Assert(lines, gc.DeepEquals, expectedNames)
 }

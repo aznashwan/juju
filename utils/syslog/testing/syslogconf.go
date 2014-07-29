@@ -83,11 +83,10 @@ func ExpectedAccumulateSyslogConf(c *gc.C, machineTag, logDir, namespace string,
 		namespace = "-" + namespace
 	}
 	var separator string
-	os, _ := version.GetOSFromSeries(version.Current.Series)
-	switch os {
-	case version.Ubuntu:
+	switch runtime.GOOS {
+	case "linux":
 		separator = "/"
-	case version.Windows:
+	case "windows":
 		separator = "\\"
 	}
 	t := template.Must(template.New("").Parse(expectedAccumulateSyslogConfTemplate))

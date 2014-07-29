@@ -50,5 +50,6 @@ purpose: get relation settings
 options:
 (.|\n)*
 relation-get prints the value(.|\n)*`
+	// this will fail on Windows because the command is "relation-get.exe"
 	c.Assert(output, gc.Matches, expectedHelp)
 }

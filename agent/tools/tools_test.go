@@ -184,7 +184,7 @@ func (t *ToolsSuite) TestChangeAgentTools(c *gc.C) {
 	// ChangeAgentTools calls symplink.Replace which calls os.Rename in file_windows.go which fails under Windows due to some OS-specific lacking in Golang
 	gotTools, err := agenttools.ChangeAgentTools(t.dataDir, "testagent", testTools.Version)
 	c.Assert(err, gc.IsNil)
-	c.Assert(*gotTools, gc.Equals, *testTools)	
+	c.Assert(*gotTools, gc.Equals, *testTools)
 	assertDirNames(c, t.toolsDir(), []string{"1.2.3-quantal-amd64", "testagent"})
 	assertDirNames(c, agenttools.ToolsDir(t.dataDir, "testagent"), []string{"jujuc", "jujud", toolsFile})
 

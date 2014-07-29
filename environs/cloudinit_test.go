@@ -230,6 +230,8 @@ func (*CloudInitSuite) testUserData(c *gc.C, bootstrap bool) {
 		// for MAAS. MAAS needs to configure and then bounce the
 		// network interfaces, which would sever the SSH connection
 		// in the synchronous bootstrap phase.
+		// this test is wonky considering most commands to be run are Linux-specific
+		// NOTE: also reformatted a little
 		expected := map[interface{}]interface{}{
 			"output": map[interface{}]interface{}{
 				"all": "| tee -a /var/log/cloud-init-output.log",

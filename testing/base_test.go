@@ -22,8 +22,8 @@ var _ = gc.Suite(&TestingBaseSuite{})
 
 // added appropriate wWindows-specific parameters
 const (
-	winHome       = `C:\\home`
-	winJujuHome   = `C:\\home\\juju`
+	winHome       = "C:\\home"
+	winJujuHome   = "C:\\home\\juju"
 	linuxHome     = "/home/eric"
 	linuxJujuHome = "/home/eric/juju"
 )

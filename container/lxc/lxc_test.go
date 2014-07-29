@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	stdtesting "testing"
 	"time"
@@ -45,6 +46,9 @@ type LxcSuite struct {
 var _ = gc.Suite(&LxcSuite{})
 
 func (s *LxcSuite) SetUpTest(c *gc.C) {
+	if runtime.GOOS == "windows" {
+		c.Skip("Skipping lxc on windows")
+	}
 	s.TestSuite.SetUpTest(c)
 	loggo.GetLogger("juju.container.lxc").SetLogLevel(loggo.TRACE)
 	s.events = make(chan mock.Event, 25)

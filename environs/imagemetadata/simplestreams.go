@@ -135,6 +135,7 @@ func (ic *ImageConstraint) Ids() ([]string, error) {
 			if err != nil {
 				return nil, err
 			}
+			// this creates names with colons which are to be used as paths and fail miserably under Windows
 			ids[j*nrArches+i] = fmt.Sprintf("com.ubuntu.cloud%s:server:%s:%s", stream, version, arch)
 		}
 	}
@@ -160,6 +161,7 @@ func (im *ImageMetadata) String() string {
 
 func (im *ImageMetadata) productId() string {
 	stream := idStream(im.Stream)
+	// again, pathmaking with colons
 	return fmt.Sprintf("com.ubuntu.cloud%s:server:%s:%s", stream, im.Version, im.Arch)
 }
 

@@ -6,7 +6,7 @@ package testing
 import (
 	"fmt"
 	"io/ioutil"
-	"path"
+	"path/filepath"
 	"sort"
 
 	"github.com/juju/utils/set"
@@ -26,6 +26,7 @@ func ParseMetadataFromDir(c *gc.C, metadataDir string) []*imagemetadata.ImageMet
 }
 
 // ParseMetadataFromStorage loads ImageMetadata from the specified storage reader.
+// a lot of pathnames with colons are created here
 func ParseMetadataFromStorage(c *gc.C, stor storage.StorageReader) []*imagemetadata.ImageMetadata {
 	source := storage.NewStorageSimpleStreamsDataSource("test storage reader", stor, "images")
 
@@ -41,11 +42,13 @@ func ParseMetadataFromStorage(c *gc.C, stor storage.StorageReader) []*imagemetad
 	c.Assert(err, gc.IsNil)
 	c.Assert(indexRef.Indexes, gc.HasLen, 1)
 
+	// names with colon
 	imageIndexMetadata := indexRef.Indexes["com.ubuntu.cloud:custom"]
 	c.Assert(imageIndexMetadata, gc.NotNil)
 
 	// Read the products file contents.
-	r, err := stor.Get(path.Join("images", imageIndexMetadata.ProductsFilePath))
+	// path.Join() used here
+	r, err := stor.Get(filepath.Join("images", imageIndexMetadata.ProductsFilePath))
 	defer r.Close()
 	c.Assert(err, gc.IsNil)
 	data, err := ioutil.ReadAll(r)
@@ -67,6 +70,7 @@ func ParseMetadataFromStorage(c *gc.C, stor storage.StorageReader) []*imagemetad
 				imageMetadata := item.(*imagemetadata.ImageMetadata)
 				imageMetadataMap[key] = imageMetadata
 				imageVersions.Add(key)
+				// product ID created with colons, may be used later to (try to) make directories with colons under Windows
 				productId := fmt.Sprintf("com.ubuntu.cloud:server:%s:%s", mc.Version, imageMetadata.Arch)
 				expectedProductIds.Add(productId)
 			}

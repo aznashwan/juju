@@ -4,6 +4,7 @@
 package main
 
 import (
+	"runtime"
 	"strings"
 
 	gc "launchpad.net/gocheck"
@@ -32,6 +33,12 @@ func (suite *HelpToolSuite) TestHelpTool(c *gc.C) {
 	for i, line := range lines {
 		lines[i] = strings.Fields(line)[0]
 	}
+	// added Windows-specific .exe command extension coverage
+	if runtime.GOOS == "windows" {
+		for _, command := range expectedNames{
+			command = command + ".exe"
+		}
+	}
 	c.Assert(lines, gc.DeepEquals, expectedNames)
 }
 
@@ -43,5 +50,6 @@ purpose: get relation settings
 options:
 (.|\n)*
 relation-get prints the value(.|\n)*`
+	// this will fail on Windows because the command is "relation-get.exe"
 	c.Assert(output, gc.Matches, expectedHelp)
 }

@@ -6,6 +6,7 @@ package agent
 import (
 	"io/ioutil"
 	"os"
+	"runtime"
 
 	"github.com/juju/names"
 	gc "launchpad.net/gocheck"
@@ -77,5 +78,10 @@ func (s *identitySuite) TestWriteSystemIdentityFile(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	fi, err = os.Stat(conf.SystemIdentityPath())
-	c.Assert(err, gc.ErrorMatches, `stat .*: no such file or directory`)
+	switch runtime.GOOS {
+	case "windows":
+		c.Assert(err, gc.ErrorMatches, `*The system cannot find the file specified.`)
+	case "linux":
+		c.Assert(err, gc.ErrorMatches, `stat .*: no such file or directory`)
+	}
 }

@@ -4,11 +4,15 @@
 package kvm_test
 
 import (
+	"runtime"
 	"testing"
 
 	gc "launchpad.net/gocheck"
 )
 
 func Test(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping kvm on windows")
+	}
 	gc.TestingT(t)
 }

@@ -181,7 +181,7 @@ func (t *ToolsSuite) TestChangeAgentTools(c *gc.C) {
 	err := agenttools.UnpackTools(t.dataDir, testTools, bytes.NewReader(data))
 	c.Assert(err, gc.IsNil)
 
-	// ChangeAgentTools calls symplink.Replace which calls os.Rename in file_windows.go which fails under Windows due to some OS-specific lacking in Golang
+	// ChangeAgentTools calls symlink.Replace which calls os.Rename in file_windows.go which fails under Windows due to some OS-specific lacking in Golang
 	gotTools, err := agenttools.ChangeAgentTools(t.dataDir, "testagent", testTools.Version)
 	c.Assert(err, gc.IsNil)
 	c.Assert(*gotTools, gc.Equals, *testTools)
@@ -212,7 +212,16 @@ func (t *ToolsSuite) TestChangeAgentTools(c *gc.C) {
 
 func (t *ToolsSuite) TestSharedToolsDir(c *gc.C) {
 	dir := agenttools.SharedToolsDir("/var/lib/juju", version.MustParseBinary("1.2.3-precise-amd64"))
-	c.Assert(dir, gc.Equals, "/var/lib/juju/tools/1.2.3-precise-amd64")
+	// made the test more OS-specific
+	// despite the path being Linux-specififc, the test still verifies the basic functionality properly
+	ostype, oserr := version.GetOSFromSeries(version.Current.Series)
+	c.Assert(oserr, gc.IsNil)
+	switch ostype {
+	case version.Ubuntu:
+		c.Assert(dir, gc.Equals, "/var/lib/juju/tools/1.2.3-precise-amd64")
+	case version.Windows:
+		c.Assert(dir, gc.Equals, "\\var\\lib\\juju\\tools\\1.2.3-precise-amd64")
+	}
 }
 
 // assertToolsContents asserts that the directory for the tools

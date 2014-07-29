@@ -79,7 +79,16 @@ func (s *DiskManagerSuite) TestUnpackToolsContents(c *gc.C) {
 func (t *DiskManagerSuite) TestSharedToolsDir(c *gc.C) {
 	manager := agenttools.NewDiskManager("/var/lib/juju")
 	dir := manager.SharedToolsDir(version.MustParseBinary("1.2.3-precise-amd64"))
-	c.Assert(dir, gc.Equals, "/var/lib/juju/tools/1.2.3-precise-amd64")
+	// made test more OS-specific
+	// despite the path being Linux-specififc, the test still verifies the basic functionality properly
+	ostype, oserr := version.GetOSFromSeries(version.Current.Series)
+	c.Assert(oserr, gc.IsNil)
+	switch ostype {
+	case version.Ubuntu:
+		c.Assert(dir, gc.Equals, "/var/lib/juju/tools/1.2.3-precise-amd64")
+	case version.Windows:
+		c.Assert(dir, gc.Equals, "\\var\\lib\\juju\\tools\\1.2.3-precise-amd64")
+	}
 }
 
 // assertToolsContents asserts that the directory for the tools

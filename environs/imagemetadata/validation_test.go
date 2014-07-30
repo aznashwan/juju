@@ -62,6 +62,7 @@ func (s *ValidateSuite) assertMatch(c *gc.C, stream string) {
 			simplestreams.NewURLDataSource("test", "file://"+metadataPath, utils.VerifySSLHostnames)},
 	}
 	imageIds, resolveInfo, err := imagemetadata.ValidateImageMetadata(params)
+	// failures here due to the bad URL forming habits from urls.go
 	c.Assert(err, gc.IsNil)
 	c.Assert(imageIds, gc.DeepEquals, []string{"1234"})
 	c.Check(resolveInfo, gc.DeepEquals, &simplestreams.ResolveInfo{

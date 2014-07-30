@@ -58,6 +58,7 @@ func (s *prereqsSuite) SetUpTest(c *gc.C) {
 
 	// symlink $temp/dpkg-query to /bin/true, to
 	// simulate package installation query responses.
+	// this test will fail on Windows because it tries to symlink /bin/true to a binary tool of dpkg lol
 	err = symlink.New("/bin/true", filepath.Join(s.tmpdir, "dpkg-query"))
 	c.Assert(err, gc.IsNil)
 	s.PatchValue(&isPackageInstalled, apt.IsPackageInstalled)

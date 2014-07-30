@@ -35,8 +35,8 @@ func (suite *HelpToolSuite) TestHelpTool(c *gc.C) {
 	}
 	// added Windows-specific .exe command extension coverage
 	if runtime.GOOS == "windows" {
-		for _, command := range expectedNames{
-			command = command + ".exe"
+		for i, command := range lines {
+			lines[i] = command + ".exe"
 		}
 	}
 	c.Assert(lines, gc.DeepEquals, expectedNames)

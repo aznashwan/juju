@@ -31,7 +31,7 @@ var ownerGetTests = []struct {
 
 func (s *OwnerGetSuite) createCommand(c *gc.C) cmd.Command {
 	hctx := s.GetHookContext(c, -1, "")
-	com, err := jujuc.NewCommand(hctx, "owner-get")
+	com, err := jujuc.NewCommand(hctx, "owner-get"+s.cmdSuffix)
 	c.Assert(err, gc.IsNil)
 	return com
 }

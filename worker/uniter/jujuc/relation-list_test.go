@@ -111,7 +111,7 @@ func (s *RelationListSuite) TestRelationList(c *gc.C) {
 		hctx := s.GetHookContext(c, t.relid, "")
 		setMembers(hctx.rels[0], t.members0)
 		setMembers(hctx.rels[1], t.members1)
-		com, err := jujuc.NewCommand(hctx, "relation-list")
+		com, err := jujuc.NewCommand(hctx, "relation-list"+s.cmdSuffix)
 		c.Assert(err, gc.IsNil)
 		ctx := testing.Context(c)
 		code := cmd.Main(com, ctx, t.args)
@@ -154,7 +154,7 @@ options:
 	} {
 		c.Logf("test relid %d", relid)
 		hctx := s.GetHookContext(c, relid, "")
-		com, err := jujuc.NewCommand(hctx, "relation-list")
+		com, err := jujuc.NewCommand(hctx, "relation-list"+s.cmdSuffix)
 		c.Assert(err, gc.IsNil)
 		ctx := testing.Context(c)
 		code := cmd.Main(com, ctx, []string{"--help"})

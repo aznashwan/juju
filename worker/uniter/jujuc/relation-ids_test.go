@@ -105,7 +105,7 @@ func (s *RelationIdsSuite) TestRelationIds(c *gc.C) {
 	for i, t := range relationIdsTests {
 		c.Logf("test %d: %s", i, t.summary)
 		hctx := s.GetHookContext(c, t.relid, "")
-		com, err := jujuc.NewCommand(hctx, "relation-ids")
+		com, err := jujuc.NewCommand(hctx, "relation-ids"+s.cmdSuffix)
 		c.Assert(err, gc.IsNil)
 		ctx := testing.Context(c)
 		code := cmd.Main(com, ctx, t.args)
@@ -145,7 +145,7 @@ options:
 	} {
 		c.Logf("relid %d", relid)
 		hctx := s.GetHookContext(c, relid, "")
-		com, err := jujuc.NewCommand(hctx, "relation-ids")
+		com, err := jujuc.NewCommand(hctx, "relation-ids"+s.cmdSuffix)
 		c.Assert(err, gc.IsNil)
 		ctx := testing.Context(c)
 		code := cmd.Main(com, ctx, []string{"--help"})

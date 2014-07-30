@@ -5,6 +5,7 @@ package jujuc_test
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/juju/cmd"
 	"github.com/juju/loggo"
@@ -20,10 +21,11 @@ type JujuLogSuite struct {
 
 var _ = gc.Suite(&JujuLogSuite{})
 
-func assertLogs(c *gc.C, ctx jujuc.Context, writer *loggo.TestWriter, unitname, badge string) {
+//Added assertLogs to suite to access s.cmdSuffix
+func (s *JujuLogSuite) assertLogs(c *gc.C, ctx jujuc.Context, writer *loggo.TestWriter, unitname, badge string) {
 	msg1 := "the chickens"
 	msg2 := "are 110% AWESOME"
-	com, err := jujuc.NewCommand(ctx, "juju-log")
+	com, err := jujuc.NewCommand(ctx, "juju-log"+s.cmdSuffix)
 	c.Assert(err, gc.IsNil)
 	for _, t := range []struct {
 		args  []string
@@ -68,16 +70,23 @@ func (s *JujuLogSuite) TestBadges(c *gc.C) {
 	loggo.GetLogger("unit").SetLogLevel(loggo.TRACE)
 	c.Assert(err, gc.IsNil)
 	hctx := s.GetHookContext(c, -1, "")
-	assertLogs(c, hctx, tw, "u/0", "")
+	s.assertLogs(c, hctx, tw, "u/0", "")
 	hctx = s.GetHookContext(c, 1, "u/1")
-	assertLogs(c, hctx, tw, "u/0", "peer1:1: ")
+	s.assertLogs(c, hctx, tw, "u/0", "peer1:1: ")
 }
 
 func newJujuLogCommand(c *gc.C) cmd.Command {
 	ctx := &Context{}
-	com, err := jujuc.NewCommand(ctx, "juju-log")
-	c.Assert(err, gc.IsNil)
-	return com
+	//Cannot access s.cmdSuffix here
+	if runtime.GOOS == "windows" {
+		com, err := jujuc.NewCommand(ctx, "juju-log.exe")
+		c.Assert(err, gc.IsNil)
+		return com
+	} else {
+		com, err := jujuc.NewCommand(ctx, "juju-log")
+		c.Assert(err, gc.IsNil)
+		return com
+	}
 }
 
 func (s *JujuLogSuite) TestRequiresMessage(c *gc.C) {

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"runtime"
 	"sort"
 	stdtesting "testing"
 
@@ -33,6 +34,8 @@ func bufferString(w io.Writer) string {
 type ContextSuite struct {
 	testing.BaseSuite
 	rels map[int]*ContextRelation
+	//Added to test windows commands
+	cmdSuffix string
 }
 
 func (s *ContextSuite) SetUpTest(c *gc.C) {
@@ -52,6 +55,11 @@ func (s *ContextSuite) SetUpTest(c *gc.C) {
 				"u/0": {"private-address": "u-0.testing.invalid"},
 			},
 		},
+	}
+	if runtime.GOOS == "windows" {
+		s.cmdSuffix = ".exe"
+	} else {
+		s.cmdSuffix = ""
 	}
 }
 

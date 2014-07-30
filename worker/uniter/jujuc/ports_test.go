@@ -32,7 +32,7 @@ var portsTests = []struct {
 func (s *PortsSuite) TestOpenClose(c *gc.C) {
 	hctx := s.GetHookContext(c, -1, "")
 	for _, t := range portsTests {
-		com, err := jujuc.NewCommand(hctx, t.cmd[0])
+		com, err := jujuc.NewCommand(hctx, t.cmd[0]+s.cmdSuffix)
 		c.Assert(err, gc.IsNil)
 		ctx := testing.Context(c)
 		code := cmd.Main(com, ctx, t.cmd[1:])
@@ -60,7 +60,7 @@ func (s *PortsSuite) TestBadArgs(c *gc.C) {
 	for _, name := range []string{"open-port", "close-port"} {
 		for _, t := range badPortsTests {
 			hctx := s.GetHookContext(c, -1, "")
-			com, err := jujuc.NewCommand(hctx, name)
+			com, err := jujuc.NewCommand(hctx, name+s.cmdSuffix)
 			c.Assert(err, gc.IsNil)
 			err = testing.InitCommand(com, t.args)
 			c.Assert(err, gc.ErrorMatches, t.err)
@@ -70,7 +70,7 @@ func (s *PortsSuite) TestBadArgs(c *gc.C) {
 
 func (s *PortsSuite) TestHelp(c *gc.C) {
 	hctx := s.GetHookContext(c, -1, "")
-	open, err := jujuc.NewCommand(hctx, "open-port")
+	open, err := jujuc.NewCommand(hctx, "open-port"+s.cmdSuffix)
 	c.Assert(err, gc.IsNil)
 	flags := testing.NewFlagSet()
 	c.Assert(string(open.Info().Help(flags)), gc.Equals, `
@@ -80,7 +80,7 @@ purpose: register a port to open
 The port will only be open while the service is exposed.
 `[1:])
 
-	close, err := jujuc.NewCommand(hctx, "close-port")
+	close, err := jujuc.NewCommand(hctx, "close-port"+s.cmdSuffix)
 	c.Assert(err, gc.IsNil)
 	c.Assert(string(close.Info().Help(flags)), gc.Equals, `
 usage: close-port <port>[/<protocol>]
@@ -101,7 +101,7 @@ func (s *PortsSuite) TestOpenCloseDeprecation(c *gc.C) {
 	hctx := s.GetHookContext(c, -1, "")
 	for _, t := range portsFormatDeprectaionTests {
 		name := t.cmd[0]
-		com, err := jujuc.NewCommand(hctx, name)
+		com, err := jujuc.NewCommand(hctx, name+s.cmdSuffix)
 		c.Assert(err, gc.IsNil)
 		ctx := testing.Context(c)
 		code := cmd.Main(com, ctx, t.cmd[1:])

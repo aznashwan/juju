@@ -28,7 +28,7 @@ func (s *RelationSetSuite) TestHelp(c *gc.C) {
 	for i, t := range helpTests {
 		c.Logf("test %d", i)
 		hctx := s.GetHookContext(c, t.relid, "")
-		com, err := jujuc.NewCommand(hctx, "relation-set")
+		com, err := jujuc.NewCommand(hctx, "relation-set"+s.cmdSuffix)
 		c.Assert(err, gc.IsNil)
 		ctx := testing.Context(c)
 		code := cmd.Main(com, ctx, []string{"--help"})
@@ -152,7 +152,7 @@ func (s *RelationSetSuite) TestInit(c *gc.C) {
 	for i, t := range relationSetInitTests {
 		c.Logf("test %d", i)
 		hctx := s.GetHookContext(c, t.ctxrelid, "")
-		com, err := jujuc.NewCommand(hctx, "relation-set")
+		com, err := jujuc.NewCommand(hctx, "relation-set"+s.cmdSuffix)
 		c.Assert(err, gc.IsNil)
 		err = testing.InitCommand(com, t.args)
 		if t.err == "" {
@@ -198,7 +198,7 @@ func (s *RelationSetSuite) TestRun(c *gc.C) {
 		hctx.rels[1].units["u/0"] = basic
 
 		// Run the command.
-		com, err := jujuc.NewCommand(hctx, "relation-set")
+		com, err := jujuc.NewCommand(hctx, "relation-set"+s.cmdSuffix)
 		c.Assert(err, gc.IsNil)
 		rset := com.(*jujuc.RelationSetCommand)
 		rset.RelationId = 1
@@ -215,7 +215,7 @@ func (s *RelationSetSuite) TestRun(c *gc.C) {
 
 func (s *RelationSetSuite) TestRunDeprecationWarning(c *gc.C) {
 	hctx := s.GetHookContext(c, 0, "")
-	com, _ := jujuc.NewCommand(hctx, "relation-set")
+	com, _ := jujuc.NewCommand(hctx, "relation-set"+s.cmdSuffix)
 	// The rel= is needed to make this a valid command.
 	ctx, err := testing.RunCommand(c, com, "--format", "foo", "rel=")
 

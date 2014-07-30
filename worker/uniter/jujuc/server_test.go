@@ -200,13 +200,13 @@ var newCommandTests = []struct {
 	{"relation-list", ""},
 	{"relation-set", ""},
 	{"unit-get", ""},
-	{"random", "unknown command: random"},
+	{"random", "unknown command: random(.exe)?"},
 }
 
 func (s *NewCommandSuite) TestNewCommand(c *gc.C) {
 	ctx := s.GetHookContext(c, 0, "")
 	for _, t := range newCommandTests {
-		com, err := jujuc.NewCommand(ctx, t.name)
+		com, err := jujuc.NewCommand(ctx, t.name+s.cmdSuffix)
 		if t.err == "" {
 			// At this level, just check basic sanity; commands are tested in
 			// more detail elsewhere.

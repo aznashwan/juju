@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -201,7 +201,8 @@ func ConfigureBasic(cfg *MachineConfig, c *cloudinit.Config) error {
 	// Note: this must be the last runcmd we do in ConfigureBasic, as
 	// the presence of the nonce file is used to gate the remainder
 	// of synchronous bootstrap.
-	noncefile := path.Join(cfg.DataDir, NonceFile)
+	// path.Join() used here resulting in wonky nonce filepath
+	noncefile := filepath.Join(cfg.DataDir, NonceFile)
 	c.AddFile(noncefile, cfg.MachineNonce, 0644)
 	return nil
 }
@@ -282,7 +283,8 @@ func ConfigureJuju(cfg *MachineConfig, c *cloudinit.Config) error {
 	// ubuntu:ubuntu from root:root so the juju-run command run as the ubuntu
 	// user is able to get access to the hook execution lock (like the uniter
 	// itself does.)
-	lockDir := path.Join(cfg.DataDir, "locks")
+	// path.Join() used here, changed to filepath.Join()
+	lockDir := filepath.Join(cfg.DataDir, "locks")
 	c.AddScripts(
 		fmt.Sprintf("mkdir -p %s", lockDir),
 		// We only try to change ownership if there is an ubuntu user
@@ -369,7 +371,8 @@ func ConfigureJuju(cfg *MachineConfig, c *cloudinit.Config) error {
 }
 
 func (cfg *MachineConfig) dataFile(name string) string {
-	return path.Join(cfg.DataDir, name)
+	// path.Join() used here too resulting in bad datafile path
+	return filepath.Join(cfg.DataDir, name)
 }
 
 func (cfg *MachineConfig) agentConfig(tag names.Tag) (agent.ConfigSetter, error) {
@@ -441,8 +444,11 @@ func (cfg *MachineConfig) addMachineAgentToBoot(c *cloudinit.Config, tag, machin
 // to use as a directory for storing the tools executables in
 // by using the last element stripped of its extension.
 func versionDir(toolsURL string) string {
-	name := path.Base(toolsURL)
-	ext := path.Ext(name)
+	// path.Base() has some really wonky behavior when it comes to Windows paths, and filepath.Base() is no better either
+	// I see no way to make this work under Windows without implementing it ourselves
+	// I changed them to filepath anyhow to midigate the number of imports
+	name := filepath.Base(toolsURL)
+	ext := filepath.Ext(name)
 	return name[:len(name)-len(ext)]
 }
 

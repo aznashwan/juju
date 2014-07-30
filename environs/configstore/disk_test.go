@@ -161,6 +161,7 @@ func (*diskStoreSuite) TestRenameFails(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	info := store.CreateInfo("someenv")
+	// for some reason this traces all the way back to Windows API calls from syscall/zsyscall_windows_arch.go where the obtained error is thrown
 	err = info.Write()
 	c.Assert(err, gc.ErrorMatches, "environment info already exists")
 }

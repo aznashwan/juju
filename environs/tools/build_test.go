@@ -62,6 +62,7 @@ func (b *buildSuite) TearDownTest(c *gc.C) {
 	b.BaseSuite.TearDownTest(c)
 }
 
+// this whole test is bound for failure on Windows and should either be re-written or skipped
 func (b *buildSuite) TestFindExecutable(c *gc.C) {
 
 	for _, test := range []struct {
@@ -69,12 +70,14 @@ func (b *buildSuite) TestFindExecutable(c *gc.C) {
 		expected   string
 		errorMatch string
 	}{{
+		// this fails because an absolute path must start with C:\...
 		execFile: "/some/absolute/path",
 		expected: "/some/absolute/path",
 	}, {
 		execFile: "./foo",
 		expected: filepath.Join(b.cwd, "foo"),
 	}, {
+		// this fails becuase b.filePath is bogus AND the exec-file should be "juju-test.exe"
 		execFile: "juju-test",
 		expected: b.filePath,
 	}, {

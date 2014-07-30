@@ -43,7 +43,12 @@ func (suite *HelpToolSuite) TestHelpTool(c *gc.C) {
 }
 
 func (suite *HelpToolSuite) TestHelpToolName(c *gc.C) {
-	output := badrun(c, 0, "help-tool", "relation-get")
+	var output string
+	if runtime.GOOS == "windows" {
+		output = badrun(c, 0, "help-tool", "relation-get.exe")
+	} else {
+		output = badrun(c, 0, "help-tool", "relation-get")
+	}
 	expectedHelp := `usage: relation-get \[options\] <key> <unit id>
 purpose: get relation settings
 

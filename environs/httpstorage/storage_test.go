@@ -92,7 +92,10 @@ func (s *storageSuite) TestPersistence(c *gc.C) {
 	}
 	for _, name := range names {
 		checkFileDoesNotExist(c, stor, name)
-		checkPutFile(c, stor, name, []byte(name))
+		// Later, the file's contents is tested against it's name, the easiest
+		// way of assuring OS-independence is to write its OS-specific name
+		// in the first place.
+		checkPutFile(c, stor, name, []byte(filepath.FromSlash(name))
 	}
 	checkList(c, stor, "", names)
 	checkList(c, stor, "a", []string{"aa"})
@@ -132,7 +135,9 @@ func (s *storageSuite) TestPersistence(c *gc.C) {
 func checkList(c *gc.C, stor storage.StorageReader, prefix string, names []string) {
 	lnames, err := storage.List(stor, prefix)
 	c.Assert(err, gc.IsNil)
-	c.Assert(lnames, gc.DeepEquals, names)
+	for i, _ := range names {
+		c.Assert(names[i], jc.SamePath, lnames[i])
+	}
 }
 
 type readerWithClose struct {

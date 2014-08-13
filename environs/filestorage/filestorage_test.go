@@ -79,7 +79,9 @@ func (s *filestorageSuite) TestList(c *gc.C) {
 		c.Logf("test %d: prefix=%q", i, test.prefix)
 		files, err := storage.List(s.reader, test.prefix)
 		c.Assert(err, gc.IsNil)
-		c.Assert(files, gc.DeepEquals, test.expected)
+		for i, _ := range files {
+			c.Assert(files[i], jc.SamePath, test.prefix[i])
+		}
 	}
 }
 
@@ -235,5 +237,5 @@ func (s *filestorageSuite) TestRelativePath(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	url, err := reader.URL("")
 	c.Assert(err, gc.IsNil)
-	c.Assert(url, gc.Equals, "file://"+dir+"/a")
+	c.Assert(url, gc.Equals, "file://" + filepath.Join(dir, "/a"))
 }

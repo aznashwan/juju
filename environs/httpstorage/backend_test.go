@@ -272,7 +272,9 @@ func testList(c *gc.C, client *http.Client, url string) {
 		_, err = buf.ReadFrom(resp.Body)
 		c.Assert(err, gc.IsNil)
 		names := strings.Split(buf.String(), "\n")
-		c.Assert(names, gc.DeepEquals, tc.found)
+		for i, _ := range names {
+			c.Assert(names[i], jc.SamePath, tc.found[i])
+		}
 	}
 	for i, tc := range listTests {
 		c.Logf("test %d", i)

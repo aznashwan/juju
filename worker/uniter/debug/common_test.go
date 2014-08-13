@@ -5,6 +5,7 @@ package debug_test
 
 import (
 	"testing"
+	"path/filepath"
 
 	gc "launchpad.net/gocheck"
 
@@ -25,6 +26,8 @@ func (*DebugHooksCommonSuite) TestHooksContext(c *gc.C) {
 	c.Assert(ctx.Unit, gc.Equals, "foo/8")
 	c.Assert(ctx.FlockDir, gc.Equals, "/tmp")
 	ctx.FlockDir = "/var/lib/juju"
-	c.Assert(ctx.ClientFileLock(), gc.Equals, "/var/lib/juju/juju-unit-foo-8-debug-hooks")
-	c.Assert(ctx.ClientExitFileLock(), gc.Equals, "/var/lib/juju/juju-unit-foo-8-debug-hooks-exit")
+	// Despite the paths being Linux specific from the get-go, the basic 
+	// functionality is still tested well on Windows too.
+	c.Assert(ctx.ClientFileLock(), gc.Equals, filepath.FromSlash("/var/lib/juju/juju-unit-foo-8-debug-hooks"))
+	c.Assert(ctx.ClientExitFileLock(), gc.Equals, filepath.FromSlash("/var/lib/juju/juju-unit-foo-8-debug-hooks-exit"))
 }

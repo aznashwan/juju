@@ -21,7 +21,7 @@ import (
 	"github.com/juju/names"
 	jujutxn "github.com/juju/txn"
 	"github.com/juju/utils"
-	"gopkg.in/juju/charm.v2"
+	"gopkg.in/juju/charm.v3"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/mgo.v2/txn"
@@ -66,6 +66,7 @@ const (
 	statusesC          = "statuses"
 	stateServersC      = "stateServers"
 	openedPortsC       = "openedPorts"
+	metricsC           = "metrics"
 
 	// These collections are used by the mgo transaction runner.
 	txnLogC = "txns.log"
@@ -1632,13 +1633,6 @@ func (st *State) StartSync() {
 // be authorized; otherwise no authorization is required.
 func (st *State) SetAdminMongoPassword(password string) error {
 	return mongo.SetAdminMongoPassword(st.db.Session, AdminUser, password)
-}
-
-func (st *State) setMongoPassword(name, password string) error {
-	return mongo.SetMongoPassword(name, password,
-		st.db,
-		st.db.Session.DB("presence"),
-		st.db.Session.DB("admin"))
 }
 
 type stateServersDoc struct {

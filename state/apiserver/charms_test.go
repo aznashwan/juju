@@ -17,8 +17,8 @@ import (
 
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils"
-	"gopkg.in/juju/charm.v2"
-	charmtesting "gopkg.in/juju/charm.v2/testing"
+	"gopkg.in/juju/charm.v3"
+	charmtesting "gopkg.in/juju/charm.v3/testing"
 	gc "launchpad.net/gocheck"
 
 	"github.com/juju/juju/environs"
@@ -38,7 +38,7 @@ type authHttpSuite struct {
 func (s *authHttpSuite) SetUpTest(c *gc.C) {
 	s.JujuConnSuite.SetUpTest(c)
 	s.password = "password"
-	user := s.Factory.MakeUser(factory.UserParams{Password: s.password})
+	user := s.Factory.MakeUser(c, &factory.UserParams{Password: s.password})
 	s.userTag = user.Tag().String()
 }
 

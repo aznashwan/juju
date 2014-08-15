@@ -95,7 +95,7 @@ func (s *storageSuite) TestPersistence(c *gc.C) {
 		// Later, the file's contents is tested against it's name, the easiest
 		// way of assuring OS-independence is to write its OS-specific name
 		// in the first place.
-		checkPutFile(c, stor, name, []byte(filepath.FromSlash(name))
+		checkPutFile(c, stor, name, []byte(filepath.FromSlash(name)))
 	}
 	checkList(c, stor, "", names)
 	checkList(c, stor, "a", []string{"aa"})

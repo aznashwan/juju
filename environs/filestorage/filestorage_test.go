@@ -80,7 +80,7 @@ func (s *filestorageSuite) TestList(c *gc.C) {
 		files, err := storage.List(s.reader, test.prefix)
 		c.Assert(err, gc.IsNil)
 		for i, _ := range files {
-			c.Assert(files[i], jc.SamePath, test.prefix[i])
+			c.Assert(files[i], jc.SamePath, test.expected[i])
 		}
 	}
 }

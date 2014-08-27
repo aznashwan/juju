@@ -55,8 +55,7 @@ func (s *unitUpgraderSuite) SetUpTest(c *gc.C) {
 
 	// The default auth is as the unit agent
 	s.authorizer = apiservertesting.FakeAuthorizer{
-		Tag:       s.rawUnit.Tag(),
-		UnitAgent: true,
+		Tag: s.rawUnit.Tag(),
 	}
 	s.upgrader, err = upgrader.NewUnitUpgraderAPI(s.State, s.resources, s.authorizer)
 	c.Assert(err, gc.IsNil)
@@ -101,8 +100,7 @@ func (s *unitUpgraderSuite) TestWatchAPIVersion(c *gc.C) {
 
 func (s *unitUpgraderSuite) TestUpgraderAPIRefusesNonUnitAgent(c *gc.C) {
 	anAuthorizer := s.authorizer
-	anAuthorizer.MachineAgent = true
-	anAuthorizer.UnitAgent = false
+	anAuthorizer.Tag = names.NewMachineTag("7")
 	anUpgrader, err := upgrader.NewUnitUpgraderAPI(s.State, s.resources, anAuthorizer)
 	c.Check(err, gc.NotNil)
 	c.Check(anUpgrader, gc.IsNil)
@@ -144,7 +142,7 @@ func (s *unitUpgraderSuite) TestToolsRefusesWrongAgent(c *gc.C) {
 	results, err := anUpgrader.Tools(args)
 	// It is not an error to make the request, but the specific item is rejected
 	c.Assert(err, gc.IsNil)
-	c.Check(results.Results, gc.HasLen, 1)
+	c.Assert(results.Results, gc.HasLen, 1)
 	toolResult := results.Results[0]
 	c.Assert(toolResult.Error, gc.DeepEquals, apiservertesting.ErrUnauthorized)
 }

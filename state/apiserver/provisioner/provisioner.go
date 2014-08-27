@@ -36,11 +36,10 @@ type ProvisionerAPI struct {
 	*common.EnvironMachinesWatcher
 	*common.InstanceIdGetter
 
-	st                  *state.State
-	resources           *common.Resources
-	authorizer          common.Authorizer
-	getAuthFunc         common.GetAuthFunc
-	getCanWatchMachines common.GetAuthFunc
+	st          *state.State
+	resources   *common.Resources
+	authorizer  common.Authorizer
+	getAuthFunc common.GetAuthFunc
 }
 
 // NewProvisionerAPI creates a new server-side ProvisionerAPI facade.
@@ -53,34 +52,30 @@ func NewProvisionerAPI(st *state.State, resources *common.Resources, authorizer 
 		isMachineAgent := authorizer.AuthMachineAgent()
 		authEntityTag := authorizer.GetAuthTag()
 
-		// TODO(dfc) this func should take a Tag
-		return func(tag string) bool {
-			if isMachineAgent && tag == authEntityTag.String() {
+		return func(tag names.Tag) bool {
+			if isMachineAgent && tag == authEntityTag {
 				// A machine agent can always access its own machine.
 				return true
 			}
-			t, err := names.ParseMachineTag(tag)
-			if err != nil {
+			switch tag := tag.(type) {
+			case names.MachineTag:
+				parentId := state.ParentId(tag.Id())
+				if parentId == "" {
+					// All top-level machines are accessible by the
+					// environment manager.
+					return isEnvironManager
+				}
+				// All containers with the authenticated machine as a
+				// parent are accessible by it.
+				// TODO(dfc) sometimes authEntity tag is nil, which is fine because nil is
+				// only equal to nil, but it suggests someone is passing an authorizer
+				// with a nil tag.
+				return isMachineAgent && names.NewMachineTag(parentId) == authEntityTag
+			default:
 				return false
 			}
-			parentId := state.ParentId(t.Id())
-			if parentId == "" {
-				// All top-level machines are accessible by the
-				// environment manager.
-				return isEnvironManager
-			}
-			// All containers with the authenticated machine as a
-			// parent are accessible by it.
-			// TODO(dfc) sometimes authEntity tag is nil, which is fine because nil is
-			// only equal to nil, but it suggests someone is passing an authorizer
-			// with a nil tag.
-			return isMachineAgent && names.NewMachineTag(parentId) == authEntityTag
 		}, nil
 	}
-	// Both provisioner types can watch the environment.
-	getCanWatch := common.AuthAlways(true)
-	// Only the environment provisioner can read secrets.
-	getCanReadSecrets := common.AuthAlways(authorizer.AuthEnvironManager())
 	return &ProvisionerAPI{
 		Remover:                common.NewRemover(st, false, getAuthFunc),
 		StatusSetter:           common.NewStatusSetter(st, getAuthFunc),
@@ -90,18 +85,17 @@ func NewProvisionerAPI(st *state.State, resources *common.Resources, authorizer 
 		StateAddresser:         common.NewStateAddresser(st),
 		APIAddresser:           common.NewAPIAddresser(st, resources),
 		ToolsGetter:            common.NewToolsGetter(st, getAuthFunc),
-		EnvironWatcher:         common.NewEnvironWatcher(st, resources, getCanWatch, getCanReadSecrets),
-		EnvironMachinesWatcher: common.NewEnvironMachinesWatcher(st, resources, getCanReadSecrets),
+		EnvironWatcher:         common.NewEnvironWatcher(st, resources, authorizer),
+		EnvironMachinesWatcher: common.NewEnvironMachinesWatcher(st, resources, authorizer),
 		InstanceIdGetter:       common.NewInstanceIdGetter(st, getAuthFunc),
 		st:                     st,
 		resources:              resources,
 		authorizer:             authorizer,
 		getAuthFunc:            getAuthFunc,
-		getCanWatchMachines:    getCanReadSecrets,
 	}, nil
 }
 
-func (p *ProvisionerAPI) getMachine(canAccess common.AuthFunc, tag string) (*state.Machine, error) {
+func (p *ProvisionerAPI) getMachine(canAccess common.AuthFunc, tag names.MachineTag) (*state.Machine, error) {
 	if !canAccess(tag) {
 		return nil, common.ErrPerm
 	}
@@ -118,14 +112,14 @@ func (p *ProvisionerAPI) watchOneMachineContainers(arg params.WatchContainer) (p
 	nothing := params.StringsWatchResult{}
 	canAccess, err := p.getAuthFunc()
 	if err != nil {
-		return nothing, err
-	}
-	if !canAccess(arg.MachineTag) {
 		return nothing, common.ErrPerm
 	}
 	tag, err := names.ParseMachineTag(arg.MachineTag)
 	if err != nil {
-		return nothing, err
+		return nothing, common.ErrPerm
+	}
+	if !canAccess(tag) {
+		return nothing, common.ErrPerm
 	}
 	machine, err := p.st.Machine(tag.Id())
 	if err != nil {
@@ -168,18 +162,22 @@ func (p *ProvisionerAPI) WatchAllContainers(args params.WatchContainers) (params
 }
 
 // SetSupportedContainers updates the list of containers supported by the machines passed in args.
-func (p *ProvisionerAPI) SetSupportedContainers(
-	args params.MachineContainersParams) (params.ErrorResults, error) {
-
+func (p *ProvisionerAPI) SetSupportedContainers(args params.MachineContainersParams) (params.ErrorResults, error) {
 	result := params.ErrorResults{
 		Results: make([]params.ErrorResult, len(args.Params)),
 	}
+
+	canAccess, err := p.getAuthFunc()
+	if err != nil {
+		return result, err
+	}
 	for i, arg := range args.Params {
-		canAccess, err := p.getAuthFunc()
+		tag, err := names.ParseMachineTag(arg.MachineTag)
 		if err != nil {
-			return result, err
+			result.Results[i].Error = common.ServerError(common.ErrPerm)
+			continue
 		}
-		machine, err := p.getMachine(canAccess, arg.MachineTag)
+		machine, err := p.getMachine(canAccess, tag)
 		if err != nil {
 			result.Results[i].Error = common.ServerError(err)
 			continue
@@ -227,12 +225,18 @@ func (p *ProvisionerAPI) ContainerConfig() (params.ContainerConfig, error) {
 	if err != nil {
 		return result, err
 	}
+
+	result.UpdateBehavior = &params.UpdateBehavior{
+		config.EnableOSRefreshUpdate(),
+		config.EnableOSUpgrade(),
+	}
 	result.ProviderType = config.Type()
 	result.AuthorizedKeys = config.AuthorizedKeys()
 	result.SSLHostnameVerification = config.SSLHostnameVerification()
 	result.Proxy = config.ProxySettings()
 	result.AptProxy = config.AptProxySettings()
 	result.PreferIPv6 = config.PreferIPv6()
+
 	return result, nil
 }
 
@@ -246,7 +250,12 @@ func (p *ProvisionerAPI) Status(args params.Entities) (params.StatusResults, err
 		return result, err
 	}
 	for i, entity := range args.Entities {
-		machine, err := p.getMachine(canAccess, entity.Tag)
+		tag, err := names.ParseMachineTag(entity.Tag)
+		if err != nil {
+			result.Results[i].Error = common.ServerError(common.ErrPerm)
+			continue
+		}
+		machine, err := p.getMachine(canAccess, tag)
 		if err == nil {
 			r := &result.Results[i]
 			r.Status, r.Info, r.Data, err = machine.Status()
@@ -270,7 +279,7 @@ func (p *ProvisionerAPI) MachinesWithTransientErrors() (params.StatusResults, er
 		return results, err
 	}
 	for _, machine := range machines {
-		if !canAccessFunc(machine.Tag().String()) {
+		if !canAccessFunc(machine.Tag()) {
 			continue
 		}
 		if _, provisionedErr := machine.InstanceId(); provisionedErr == nil {
@@ -306,7 +315,12 @@ func (p *ProvisionerAPI) Series(args params.Entities) (params.StringResults, err
 		return result, err
 	}
 	for i, entity := range args.Entities {
-		machine, err := p.getMachine(canAccess, entity.Tag)
+		tag, err := names.ParseMachineTag(entity.Tag)
+		if err != nil {
+			result.Results[i].Error = common.ServerError(common.ErrPerm)
+			continue
+		}
+		machine, err := p.getMachine(canAccess, tag)
 		if err == nil {
 			result.Results[i].Result = machine.Series()
 		}
@@ -325,7 +339,12 @@ func (p *ProvisionerAPI) ProvisioningInfo(args params.Entities) (params.Provisio
 		return result, err
 	}
 	for i, entity := range args.Entities {
-		machine, err := p.getMachine(canAccess, entity.Tag)
+		tag, err := names.ParseMachineTag(entity.Tag)
+		if err != nil {
+			result.Results[i].Error = common.ServerError(common.ErrPerm)
+			continue
+		}
+		machine, err := p.getMachine(canAccess, tag)
 		if err == nil {
 			result.Results[i].Result, err = getProvisioningInfo(machine)
 		}
@@ -375,7 +394,12 @@ func (p *ProvisionerAPI) DistributionGroup(args params.Entities) (params.Distrib
 		return result, err
 	}
 	for i, entity := range args.Entities {
-		machine, err := p.getMachine(canAccess, entity.Tag)
+		tag, err := names.ParseMachineTag(entity.Tag)
+		if err != nil {
+			result.Results[i].Error = common.ServerError(common.ErrPerm)
+			continue
+		}
+		machine, err := p.getMachine(canAccess, tag)
 		if err == nil {
 			// If the machine is an environment manager, return
 			// environment manager instances. Otherwise, return
@@ -452,7 +476,12 @@ func (p *ProvisionerAPI) Constraints(args params.Entities) (params.ConstraintsRe
 		return result, err
 	}
 	for i, entity := range args.Entities {
-		machine, err := p.getMachine(canAccess, entity.Tag)
+		tag, err := names.ParseMachineTag(entity.Tag)
+		if err != nil {
+			result.Results[i].Error = common.ServerError(common.ErrPerm)
+			continue
+		}
+		machine, err := p.getMachine(canAccess, tag)
 		if err == nil {
 			var cons constraints.Value
 			cons, err = machine.Constraints()
@@ -510,7 +539,12 @@ func (p *ProvisionerAPI) RequestedNetworks(args params.Entities) (params.Request
 		return result, err
 	}
 	for i, entity := range args.Entities {
-		machine, err := p.getMachine(canAccess, entity.Tag)
+		tag, err := names.ParseMachineTag(entity.Tag)
+		if err != nil {
+			result.Results[i].Error = common.ServerError(common.ErrPerm)
+			continue
+		}
+		machine, err := p.getMachine(canAccess, tag)
 		if err == nil {
 			var networks []string
 			networks, err = machine.RequestedNetworks()
@@ -545,7 +579,12 @@ func (p *ProvisionerAPI) SetProvisioned(args params.SetProvisioned) (params.Erro
 		return result, err
 	}
 	for i, arg := range args.Machines {
-		machine, err := p.getMachine(canAccess, arg.Tag)
+		tag, err := names.ParseMachineTag(arg.Tag)
+		if err != nil {
+			result.Results[i].Error = common.ServerError(common.ErrPerm)
+			continue
+		}
+		machine, err := p.getMachine(canAccess, tag)
 		if err == nil {
 			err = machine.SetProvisioned(arg.InstanceId, arg.Nonce, arg.Characteristics)
 		}
@@ -566,7 +605,12 @@ func (p *ProvisionerAPI) SetInstanceInfo(args params.InstancesInfo) (params.Erro
 		return result, err
 	}
 	for i, arg := range args.Machines {
-		machine, err := p.getMachine(canAccess, arg.Tag)
+		tag, err := names.ParseMachineTag(arg.Tag)
+		if err != nil {
+			result.Results[i].Error = common.ServerError(common.ErrPerm)
+			continue
+		}
+		machine, err := p.getMachine(canAccess, tag)
 		if err == nil {
 			var networks []state.NetworkInfo
 			var interfaces []state.NetworkInterfaceInfo
@@ -590,11 +634,7 @@ func (p *ProvisionerAPI) SetInstanceInfo(args params.InstancesInfo) (params.Erro
 // the provisioner should retry provisioning machines with transient errors.
 func (p *ProvisionerAPI) WatchMachineErrorRetry() (params.NotifyWatchResult, error) {
 	result := params.NotifyWatchResult{}
-	canWatch, err := p.getCanWatchMachines()
-	if err != nil {
-		return params.NotifyWatchResult{}, err
-	}
-	if !canWatch("") {
+	if !p.authorizer.AuthEnvironManager() {
 		return result, common.ErrPerm
 	}
 	watch := newWatchMachineErrorRetry()

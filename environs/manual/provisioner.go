@@ -42,11 +42,6 @@ type ProvisionMachineArgs struct {
 	// Host is the SSH host: [user@]host
 	Host string
 
-	// SSHKeyPath is an optional path to a private key/identity file used when
-	// attempting to login. If unset, the default key/identity file will be
-	// used.
-	SSHKeyPath string
-
 	// DataDir is the root directory for juju data.
 	// If left blank, the default location "/var/lib/juju" will be used.
 	DataDir string
@@ -67,6 +62,8 @@ type ProvisionMachineArgs struct {
 
 	// Stderr is required to present machine provisioning progress to the user.
 	Stderr io.Writer
+
+	*params.UpdateBehavior
 }
 
 // ErrProvisioned is returned by ProvisionMachine if the target
@@ -91,32 +88,15 @@ func ProvisionMachine(args ProvisionMachineArgs) (machineId string, err error) {
 	}()
 
 	// Create the "ubuntu" user and initialise passwordless sudo. We populate
-	// the ubuntu user's authorized_keys file with the public keys in the
-	// current user's ~/.ssh directory and/or the key passed in with args.Key.
-	// The authenticationworker will later update the ubuntu user's
-	// authorized_keys.
+	// the ubuntu user's authorized_keys file with the public keys in the current
+	// user's ~/.ssh directory. The authenticationworker will later update the
+	// ubuntu user's authorized_keys.
 	user, hostname := splitUserHost(args.Host)
-	pubFilePath := ""
-
-	// Try adding the public key of a private key used to login in.
-	if args.SSHKeyPath != "" {
-		// ReadAuthorizedKeys considers non-absolute paths to be relative to ~/.ssh
-		if absKeyPath, err := utils.NormalizePath(args.SSHKeyPath); err == nil {
-			pubFilePath = absKeyPath + ".pub"
-		}
-	}
-	authorizedKeys, err := config.ReadAuthorizedKeys(pubFilePath)
-	if err != nil && pubFilePath != "" {
-		logger.Warningf("cannot add corresponding public key for %q: %v", args.SSHKeyPath, err)
-		// If pub key can't be added (e.g. because it's not found), add default keys.
-		authorizedKeys, err = config.ReadAuthorizedKeys("")
-		if err != nil {
-			logger.Warningf("cannot determine authorized keys: %v", err)
-		}
-	}
-	if err := InitUbuntuUser(hostname, user, authorizedKeys, args.SSHKeyPath, args.Stdin, args.Stdout); err != nil {
+	authorizedKeys, err := config.ReadAuthorizedKeys("")
+	if err := InitUbuntuUser(hostname, user, authorizedKeys, args.Stdin, args.Stdout); err != nil {
 		return "", err
 	}
+
 	machineParams, err := gatherMachineParams(hostname)
 	if err != nil {
 		return "", err
@@ -131,14 +111,16 @@ func ProvisionMachine(args ProvisionMachineArgs) (machineId string, err error) {
 	provisioningScript, err := args.Client.ProvisioningScript(params.ProvisioningScriptParams{
 		MachineId: machineId,
 		Nonce:     machineParams.Nonce,
+		DisablePackageCommands: !args.EnableOSRefreshUpdate && !args.EnableOSUpgrade,
 	})
+
 	if err != nil {
 		logger.Errorf("cannot obtain provisioning script")
 		return "", err
 	}
 
 	// Finally, provision the machine agent.
-	err = runProvisionScript(provisioningScript, hostname, authorizedKeys, args.Stderr)
+	err = runProvisionScript(provisioningScript, hostname, args.Stderr)
 	if err != nil {
 		return machineId, err
 	}
@@ -238,20 +220,26 @@ var provisionMachineAgent = func(host string, mcfg *cloudinit.MachineConfig, pro
 	if err != nil {
 		return err
 	}
-	return runProvisionScript(script, host, "", progressWriter)
+	return runProvisionScript(script, host, progressWriter)
 }
 
 // ProvisioningScript generates a bash script that can be
 // executed on a remote host to carry out the cloud-init
 // configuration.
 func ProvisioningScript(mcfg *cloudinit.MachineConfig) (string, error) {
+
 	cloudcfg := coreCloudinit.New()
-	if err := cloudinit.ConfigureJuju(mcfg, cloudcfg); err != nil {
+	cloudcfg.SetAptUpdate(mcfg.EnableOSRefreshUpdate)
+	cloudcfg.SetAptUpgrade(mcfg.EnableOSUpgrade)
+
+	udata, err := cloudinit.NewUserdataConfig(mcfg, cloudcfg)
+	if err != nil {
 		return "", errors.Annotate(err, "error generating cloud-config")
 	}
-	// Explicitly disabling apt_upgrade so as not to trample
-	// the target machine's existing configuration.
-	cloudcfg.SetAptUpgrade(false)
+	if err := udata.ConfigureJuju(); err != nil {
+		return "", errors.Annotate(err, "error generating cloud-config")
+	}
+
 	configScript, err := sshinit.ConfigureScript(cloudcfg)
 	if err != nil {
 		return "", errors.Annotate(err, "error converting cloud-config to script")
@@ -266,7 +254,7 @@ func ProvisioningScript(mcfg *cloudinit.MachineConfig) (string, error) {
 	return buf.String(), nil
 }
 
-func runProvisionScript(script, host, key string, progressWriter io.Writer) error {
+func runProvisionScript(script, host string, progressWriter io.Writer) error {
 	params := sshinit.ConfigureParams{
 		Host:           "ubuntu@" + host,
 		ProgressWriter: progressWriter,

@@ -7,6 +7,7 @@ import (
 	stderrors "errors"
 
 	"github.com/juju/errors"
+	"github.com/juju/names"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/txn"
 	gc "launchpad.net/gocheck"
@@ -44,6 +45,10 @@ var errorTransformTests = []struct {
 	code:       params.CodeCannotEnterScope,
 	helperFunc: params.IsCodeCannotEnterScope,
 }, {
+	err:        state.ErrDead,
+	code:       params.CodeDead,
+	helperFunc: params.IsCodeDead,
+}, {
 	err:        txn.ErrExcessiveContention,
 	code:       params.CodeExcessiveContention,
 	helperFunc: params.IsCodeExcessiveContention,
@@ -56,7 +61,7 @@ var errorTransformTests = []struct {
 	code:       params.CodeNotFound,
 	helperFunc: params.IsCodeNotFound,
 }, {
-	err:        common.NoAddressSetError("unit-mysql-0", "public"),
+	err:        common.NoAddressSetError(names.NewUnitTag("mysql/0"), "public"),
 	code:       params.CodeNoAddressSet,
 	helperFunc: params.IsCodeNoAddressSet,
 }, {

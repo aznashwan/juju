@@ -5,12 +5,10 @@ package common
 
 import (
 	"github.com/juju/names"
-
-	"github.com/juju/juju/state"
 )
 
 // AuthFunc returns whether the given entity is available to some operation.
-type AuthFunc func(tag string) bool
+type AuthFunc func(tag names.Tag) bool
 
 // GetAuthFunc returns an AuthFunc.
 type GetAuthFunc func() (AuthFunc, error)
@@ -30,8 +28,7 @@ type Authorizer interface {
 
 	// AuthOwner returns whether the authenticated entity is the same
 	// as the given entity.
-	// TODO(dfc) this should take a tag not a string
-	AuthOwner(tag string) bool
+	AuthOwner(tag names.Tag) bool
 
 	// AuthEnvironManager returns whether the authenticated entity is
 	// a machine running the environment manager job.
@@ -43,9 +40,6 @@ type Authorizer interface {
 
 	// GetAuthTag returns the tag of the authenticated entity.
 	GetAuthTag() names.Tag
-
-	// GetAuthEntity returns the authenticated entity.
-	GetAuthEntity() state.Entity
 }
 
 // AuthEither returns an AuthFunc generator that returns an AuthFunc
@@ -60,18 +54,26 @@ func AuthEither(a, b GetAuthFunc) GetAuthFunc {
 		if err != nil {
 			return nil, err
 		}
-		return func(tag string) bool {
+		return func(tag names.Tag) bool {
 			return f1(tag) || f2(tag)
 		}, nil
 	}
 }
 
-// AuthAlways returns an authentication function that always returns
-// the given permission.
-func AuthAlways(ok bool) GetAuthFunc {
+// AuthAlways returns an authentication function that always returns true iff it is passed a valid tag.
+func AuthAlways() GetAuthFunc {
 	return func() (AuthFunc, error) {
-		return func(tag string) bool {
-			return ok
+		return func(tag names.Tag) bool {
+			return true
+		}, nil
+	}
+}
+
+// AuthNever returns an authentication function that never returns true.
+func AuthNever() GetAuthFunc {
+	return func() (AuthFunc, error) {
+		return func(tag names.Tag) bool {
+			return false
 		}, nil
 	}
 }

@@ -68,6 +68,9 @@ const (
 	openedPortsC       = "openedPorts"
 	metricsC           = "metrics"
 
+	// This collection is used just for storing metadata.
+	backupsMetaC = "backupsmetadata"
+
 	// These collections are used by the mgo transaction runner.
 	txnLogC = "txns.log"
 	txnsC   = "txns"
@@ -399,7 +402,7 @@ func (st *State) SetEnvironConstraints(cons constraints.Value) error {
 	return writeConstraints(st, environGlobalKey, cons)
 }
 
-var errDead = fmt.Errorf("not found or dead")
+var ErrDead = fmt.Errorf("not found or dead")
 var errNotAlive = fmt.Errorf("not found or not alive")
 
 func onAbort(txnErr, err error) error {
@@ -499,13 +502,9 @@ func (st *State) Machine(id string) (*Machine, error) {
 // The returned value can be of type *Machine, *Unit,
 // *User, *Service, *Environment, or *Action, depending
 // on the tag.
-func (st *State) FindEntity(tag string) (Entity, error) {
-	t, err := names.ParseTag(tag)
-	if err != nil {
-		return nil, err
-	}
-	id := t.Id()
-	switch t.(type) {
+func (st *State) FindEntity(tag names.Tag) (Entity, error) {
+	id := tag.Id()
+	switch tag := tag.(type) {
 	case names.MachineTag:
 		return st.Machine(id)
 	case names.UnitTag:
@@ -543,9 +542,9 @@ func (st *State) FindEntity(tag string) (Entity, error) {
 	case names.NetworkTag:
 		return st.Network(id)
 	case names.ActionTag:
-		return st.ActionByTag(t)
+		return st.ActionByTag(tag)
 	default:
-		return nil, errors.Errorf("unsupported tag tpe %T", t)
+		return nil, errors.Errorf("unsupported tag %T", tag)
 	}
 }
 
@@ -1505,18 +1504,14 @@ func (st *State) Action(id string) (*Action, error) {
 	return newAction(st, doc), nil
 }
 
-// ActionByTag returns an Action given an ActionTag
-func (st *State) ActionByTag(tag names.Tag) (*Action, error) {
-	actionTag, ok := tag.(names.ActionTag)
-	if !ok {
-		return nil, fmt.Errorf("cannot get action from tag %v", tag)
-	}
-	return st.Action(actionIdFromTag(actionTag))
-}
-
 // matchingActions finds actions that match ActionReceiver
 func (st *State) matchingActions(ar ActionReceiver) ([]*Action, error) {
 	return st.matchingActionsByPrefix(ar.Name())
+}
+
+// ActionByTag returns an Action given an ActionTag
+func (st *State) ActionByTag(tag names.ActionTag) (*Action, error) {
+	return st.Action(actionIdFromTag(tag))
 }
 
 // matchingActionsByPrefix finds actions with a given prefix
@@ -1637,6 +1632,7 @@ func (st *State) SetAdminMongoPassword(password string) error {
 
 type stateServersDoc struct {
 	Id               string `bson:"_id"`
+	EnvUUID          string `bson:"env-uuid"`
 	MachineIds       []string
 	VotingMachineIds []string
 }
@@ -1644,6 +1640,11 @@ type stateServersDoc struct {
 // StateServerInfo holds information about currently
 // configured state server machines.
 type StateServerInfo struct {
+	// EnvironmentTag identifies the initial environment. Only the initial
+	// environment is able to have machines that manage state. The initial
+	// environment is the environment that is created when bootstrapping.
+	EnvironmentTag names.EnvironTag
+
 	// MachineIds holds the ids of all machines configured
 	// to run a state server. It includes all the machine
 	// ids in VotingMachineIds.
@@ -1667,6 +1668,7 @@ func (st *State) StateServerInfo() (*StateServerInfo, error) {
 		return nil, fmt.Errorf("cannot get state servers document: %v", err)
 	}
 	return &StateServerInfo{
+		EnvironmentTag:   names.NewEnvironTag(doc.EnvUUID),
 		MachineIds:       doc.MachineIds,
 		VotingMachineIds: doc.VotingMachineIds,
 	}, nil

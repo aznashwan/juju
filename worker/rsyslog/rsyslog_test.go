@@ -16,11 +16,11 @@ import (
 	jc "github.com/juju/testing/checkers"
 	gc "launchpad.net/gocheck"
 
+	"github.com/juju/juju/api"
 	"github.com/juju/juju/cert"
 	jujutesting "github.com/juju/juju/juju/testing"
 	"github.com/juju/juju/network"
 	"github.com/juju/juju/state"
-	"github.com/juju/juju/state/api"
 	coretesting "github.com/juju/juju/testing"
 	"github.com/juju/juju/utils/syslog"
 	"github.com/juju/juju/worker/rsyslog"
@@ -85,6 +85,11 @@ func waitForRestart(c *gc.C, restarted chan struct{}) {
 			return
 		}
 	}
+}
+
+func assertPathExists(c *gc.C, path string) {
+	_, err := os.Stat(path)
+	c.Assert(err, gc.IsNil)
 }
 
 func (s *RsyslogSuite) TestStartStop(c *gc.C) {
@@ -154,6 +159,7 @@ func (s *RsyslogSuite) TestModeAccumulate(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	rsyslogKeyPEM, err := ioutil.ReadFile(filepath.Join(*rsyslog.LogDir, "rsyslog-key.pem"))
 	c.Assert(err, gc.IsNil)
+
 	_, _, err = cert.ParseCertAndKey(string(rsyslogCertPEM), string(rsyslogKeyPEM))
 	c.Assert(err, gc.IsNil)
 	err = cert.Verify(string(rsyslogCertPEM), string(caCertPEM), time.Now().UTC())
@@ -171,6 +177,11 @@ func (s *RsyslogSuite) TestModeAccumulate(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	c.Assert(string(rsyslogConf), gc.DeepEquals, string(rendered))
+
+	// Verify logrotate files
+	assertPathExists(c, filepath.Join(*rsyslog.LogDir, "logrotate.conf"))
+	assertPathExists(c, filepath.Join(*rsyslog.LogDir, "logrotate.run"))
+
 }
 
 func (s *RsyslogSuite) TestAccumulateHA(c *gc.C) {

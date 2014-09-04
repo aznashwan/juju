@@ -18,6 +18,7 @@ import (
 	"github.com/juju/juju/agent"
 	"github.com/juju/juju/constraints"
 	"github.com/juju/juju/environs"
+	"github.com/juju/juju/environs/cloudinit"
 	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/environs/httpstorage"
 	"github.com/juju/juju/environs/manual"
@@ -36,6 +37,10 @@ import (
 )
 
 const (
+	// BootstrapInstanceId is the instance ID used
+	// for the manual provider's bootstrap instance.
+	BootstrapInstanceId instance.Id = "manual:"
+
 	// storageSubdir is the subdirectory of
 	// dataDir in which storage will be located.
 	storageSubdir = "storage"
@@ -46,7 +51,11 @@ const (
 	storageTmpSubdir = "storage-tmp"
 )
 
-var logger = loggo.GetLogger("juju.provider.manual")
+var (
+	logger                                       = loggo.GetLogger("juju.provider.manual")
+	manualCheckProvisioned                       = manual.CheckProvisioned
+	manualDetectSeriesAndHardwareCharacteristics = manual.DetectSeriesAndHardwareCharacteristics
+)
 
 type manualEnviron struct {
 	common.SupportsUnitPlacementPolicy
@@ -72,7 +81,7 @@ func (*manualEnviron) StopInstances(...instance.Id) error {
 }
 
 func (e *manualEnviron) AllInstances() ([]instance.Instance, error) {
-	return e.Instances([]instance.Id{manual.BootstrapInstanceId})
+	return e.Instances([]instance.Id{BootstrapInstanceId})
 }
 
 func (e *manualEnviron) envConfig() (cfg *environConfig) {
@@ -96,39 +105,61 @@ func (e *manualEnviron) SupportNetworks() bool {
 	return false
 }
 
-func (e *manualEnviron) Bootstrap(ctx environs.BootstrapContext, args environs.BootstrapParams) error {
+func (e *manualEnviron) Bootstrap(ctx environs.BootstrapContext, args environs.BootstrapParams) (arch, series string, _ environs.BootstrapFinalizer, _ error) {
 	// Set "use-sshstorage" to false, so agents know not to use sshstorage.
 	cfg, err := e.Config().Apply(map[string]interface{}{"use-sshstorage": false})
 	if err != nil {
-		return err
+		return "", "", nil, err
 	}
 	if err := e.SetConfig(cfg); err != nil {
-		return err
+		return "", "", nil, err
+	}
+	agentEnv, err := localstorage.StoreConfig(e)
+	if err != nil {
+		return "", "", nil, err
 	}
 	envConfig := e.envConfig()
 	// TODO(axw) consider how we can use placement to override bootstrap-host.
 	host := envConfig.bootstrapHost()
-	hc, series, err := manual.DetectSeriesAndHardwareCharacteristics(host)
+	provisioned, err := manualCheckProvisioned(host)
 	if err != nil {
-		return err
+		return "", "", nil, errors.Annotate(err, "failed to check provisioned status")
 	}
-	selectedTools, err := common.EnsureBootstrapTools(ctx, e, series, hc.Arch)
+	if provisioned {
+		return "", "", nil, manual.ErrProvisioned
+	}
+	hc, series, err := manualDetectSeriesAndHardwareCharacteristics(host)
 	if err != nil {
-		return err
+		return "", "", nil, err
 	}
-	return manual.Bootstrap(manual.BootstrapArgs{
-		Context:                 ctx,
-		Host:                    host,
-		DataDir:                 agent.DefaultDataDir,
-		Environ:                 e,
-		PossibleTools:           selectedTools,
-		Series:                  series,
-		HardwareCharacteristics: &hc,
-	})
+	finalize := func(ctx environs.BootstrapContext, mcfg *cloudinit.MachineConfig) error {
+		mcfg.InstanceId = BootstrapInstanceId
+		mcfg.HardwareCharacteristics = &hc
+		if err := environs.FinishMachineConfig(mcfg, e.Config()); err != nil {
+			return err
+		}
+		for k, v := range agentEnv {
+			mcfg.AgentEnvironment[k] = v
+		}
+		return common.ConfigureMachine(ctx, ssh.DefaultClient, host, mcfg)
+	}
+	return *hc.Arch, series, finalize, nil
 }
 
 // StateServerInstances is specified in the Environ interface.
 func (e *manualEnviron) StateServerInstances() ([]instance.Id, error) {
+	// If we're running from the bootstrap host, then
+	// useSSHStorage will be false; in that case, we
+	// do not need or want to verify the bootstrap host.
+	if e.envConfig().useSSHStorage() {
+		if err := e.verifyBootstrapHost(); err != nil {
+			return nil, err
+		}
+	}
+	return []instance.Id{BootstrapInstanceId}, nil
+}
+
+func (e *manualEnviron) verifyBootstrapHost() error {
 	// First verify that the environment is bootstrapped by checking
 	// if the agents directory exists. Note that we cannot test the
 	// root data directory, as that is created in the process of
@@ -147,15 +178,15 @@ func (e *manualEnviron) StateServerInstances() ([]instance.Id, error) {
 		stdin,
 	)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if out = strings.TrimSpace(out); len(out) > 0 {
 		if out == noAgentDir {
-			return nil, environs.ErrNotBootstrapped
+			return environs.ErrNotBootstrapped
 		}
-		return nil, errors.LoggedErrorf(logger, "unexpected output: %q", out)
+		return errors.LoggedErrorf(logger, "unexpected output: %q", out)
 	}
-	return []instance.Id{manual.BootstrapInstanceId}, nil
+	return nil
 }
 
 func (e *manualEnviron) SetConfig(cfg *config.Config) error {
@@ -203,14 +234,13 @@ func (e *manualEnviron) SetConfig(cfg *config.Config) error {
 // Implements environs.Environ.
 //
 // This method will only ever return an Instance for the Id
-// environ/manual.BootstrapInstanceId. If any others are
-// specified, then ErrPartialInstances or ErrNoInstances
-// will result.
+// BootstrapInstanceId. If any others are specified, then
+// ErrPartialInstances or ErrNoInstances will result.
 func (e *manualEnviron) Instances(ids []instance.Id) (instances []instance.Instance, err error) {
 	instances = make([]instance.Instance, len(ids))
 	var found bool
 	for i, id := range ids {
-		if id == manual.BootstrapInstanceId {
+		if id == BootstrapInstanceId {
 			instances[i] = manualBootstrapInstance{e.envConfig().bootstrapHost()}
 			found = true
 		} else {
@@ -318,16 +348,16 @@ func (e *manualEnviron) ConstraintsValidator() (constraints.Validator, error) {
 	return validator, nil
 }
 
-func (e *manualEnviron) OpenPorts(ports []network.Port) error {
+func (e *manualEnviron) OpenPorts(ports []network.PortRange) error {
 	return nil
 }
 
-func (e *manualEnviron) ClosePorts(ports []network.Port) error {
+func (e *manualEnviron) ClosePorts(ports []network.PortRange) error {
 	return nil
 }
 
-func (e *manualEnviron) Ports() ([]network.Port, error) {
-	return []network.Port{}, nil
+func (e *manualEnviron) Ports() ([]network.PortRange, error) {
+	return nil, nil
 }
 
 func (*manualEnviron) Provider() environs.EnvironProvider {

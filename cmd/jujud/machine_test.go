@@ -15,15 +15,22 @@ import (
 	"github.com/juju/cmd"
 	"github.com/juju/errors"
 	"github.com/juju/names"
+	gitjujutesting "github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils/apt"
 	"github.com/juju/utils/proxy"
 	"github.com/juju/utils/set"
 	"github.com/juju/utils/symlink"
-	"gopkg.in/juju/charm.v2"
+	"gopkg.in/juju/charm.v3"
 	gc "launchpad.net/gocheck"
 
 	"github.com/juju/juju/agent"
+	"github.com/juju/juju/api"
+	apideployer "github.com/juju/juju/api/deployer"
+	apinetworker "github.com/juju/juju/api/networker"
+	apirsyslog "github.com/juju/juju/api/rsyslog"
+	charmtesting "github.com/juju/juju/apiserver/charmrevisionupdater/testing"
+	"github.com/juju/juju/apiserver/params"
 	lxctesting "github.com/juju/juju/container/lxc/testing"
 	"github.com/juju/juju/environs/config"
 	envtesting "github.com/juju/juju/environs/testing"
@@ -35,11 +42,6 @@ import (
 	"github.com/juju/juju/provider/dummy"
 	"github.com/juju/juju/service/upstart"
 	"github.com/juju/juju/state"
-	"github.com/juju/juju/state/api"
-	apideployer "github.com/juju/juju/state/api/deployer"
-	"github.com/juju/juju/state/api/params"
-	apirsyslog "github.com/juju/juju/state/api/rsyslog"
-	charmtesting "github.com/juju/juju/state/apiserver/charmrevisionupdater/testing"
 	"github.com/juju/juju/state/watcher"
 	coretesting "github.com/juju/juju/testing"
 	"github.com/juju/juju/tools"
@@ -52,6 +54,8 @@ import (
 	"github.com/juju/juju/worker/deployer"
 	"github.com/juju/juju/worker/instancepoller"
 	"github.com/juju/juju/worker/machineenvironmentworker"
+	"github.com/juju/juju/worker/networker"
+	"github.com/juju/juju/worker/peergrouper"
 	"github.com/juju/juju/worker/rsyslog"
 	"github.com/juju/juju/worker/singular"
 	"github.com/juju/juju/worker/upgrader"
@@ -67,7 +71,6 @@ type commonMachineSuite struct {
 func (s *commonMachineSuite) SetUpSuite(c *gc.C) {
 	s.agentSuite.SetUpSuite(c)
 	s.TestSuite.SetUpSuite(c)
-	s.agentSuite.PatchValue(&charm.CacheDir, c.MkDir())
 }
 
 func (s *commonMachineSuite) TearDownSuite(c *gc.C) {
@@ -78,6 +81,8 @@ func (s *commonMachineSuite) TearDownSuite(c *gc.C) {
 func (s *commonMachineSuite) SetUpTest(c *gc.C) {
 	s.agentSuite.SetUpTest(c)
 	s.TestSuite.SetUpTest(c)
+	s.agentSuite.PatchValue(&charm.CacheDir, c.MkDir())
+	s.agentSuite.PatchValue(&stateWorkerDialOpts, mongo.DialOpts{})
 
 	os.Remove(jujuRun) // ignore error; may not exist
 	// Patch ssh user to avoid touching ~ubuntu/.ssh/authorized_keys.
@@ -245,6 +250,8 @@ func (s *MachineSuite) TestDyingMachine(c *gc.C) {
 	defer func() {
 		c.Check(a.Stop(), gc.IsNil)
 	}()
+	// Wait for configuration to be finished
+	<-a.WorkersStarted()
 	err := m.Destroy()
 	c.Assert(err, gc.IsNil)
 	select {
@@ -469,34 +476,6 @@ func (s *MachineSuite) TestManageEnvironRunsPeergrouper(c *gc.C) {
 	}
 }
 
-func (s *MachineSuite) TestEnsureLocalEnvironDoesntRunPeergrouper(c *gc.C) {
-	started := make(chan struct{}, 1)
-	s.agentSuite.PatchValue(&peergrouperNew, func(st *state.State) (worker.Worker, error) {
-		c.Check(st, gc.NotNil)
-		select {
-		case started <- struct{}{}:
-		default:
-		}
-		return newDummyWorker(), nil
-	})
-	m, _, _ := s.primeAgent(c, version.Current, state.JobManageEnviron)
-	a := s.newAgent(c, m)
-	err := a.ChangeConfig(func(config agent.ConfigSetter) error {
-		config.SetValue(agent.ProviderType, "local")
-		return nil
-	})
-	c.Assert(err, gc.IsNil)
-	defer func() { c.Check(a.Stop(), gc.IsNil) }()
-	go func() {
-		c.Check(a.Run(nil), gc.IsNil)
-	}()
-	select {
-	case <-started:
-		c.Fatalf("local environment should not start peergrouper")
-	case <-time.After(coretesting.ShortWait):
-	}
-}
-
 func (s *MachineSuite) TestManageEnvironCallsUseMultipleCPUs(c *gc.C) {
 	// If it has been enabled, the JobManageEnviron agent should call utils.UseMultipleCPUs
 	usefulVersion := version.Current
@@ -717,6 +696,41 @@ func (s *MachineSuite) TestManageEnvironServesAPI(c *gc.C) {
 		c.Assert(err, gc.IsNil)
 		c.Assert(m.Life(), gc.Equals, params.Alive)
 	})
+}
+
+func (s *MachineSuite) assertAgentSetsToolsVersion(c *gc.C, job state.MachineJob) {
+	vers := version.Current
+	vers.Minor = version.Current.Minor + 1
+	m, _, _ := s.primeAgent(c, vers, job)
+	a := s.newAgent(c, m)
+	go func() { c.Check(a.Run(nil), gc.IsNil) }()
+	defer func() { c.Check(a.Stop(), gc.IsNil) }()
+
+	timeout := time.After(coretesting.LongWait)
+	for done := false; !done; {
+		select {
+		case <-timeout:
+			c.Fatalf("timeout while waiting for agent version to be set")
+		case <-time.After(coretesting.ShortWait):
+			err := m.Refresh()
+			c.Assert(err, gc.IsNil)
+			agentTools, err := m.AgentTools()
+			c.Assert(err, gc.IsNil)
+			if agentTools.Version.Minor != version.Current.Minor {
+				continue
+			}
+			c.Assert(agentTools.Version, gc.DeepEquals, version.Current)
+			done = true
+		}
+	}
+}
+
+func (s *MachineSuite) TestAgentSetsToolsVersionManageEnviron(c *gc.C) {
+	s.assertAgentSetsToolsVersion(c, state.JobManageEnviron)
+}
+
+func (s *MachineSuite) TestAgentSetsToolsVersionHostUnits(c *gc.C) {
+	s.assertAgentSetsToolsVersion(c, state.JobHostUnits)
 }
 
 func (s *MachineSuite) TestManageEnvironRunsCleaner(c *gc.C) {
@@ -978,6 +992,42 @@ func (s *MachineSuite) TestMachineAgentRunsAPIAddressUpdaterWorker(c *gc.C) {
 	c.Fatalf("timeout while waiting for agent config to change")
 }
 
+func (s *MachineSuite) TestMachineAgentRunsSafeNetworkerWhenNetworkManagementIsDisabled(c *gc.C) {
+	attrs := coretesting.Attrs{"disable-network-management": true}
+	err := s.BackingState.UpdateEnvironConfig(attrs, nil, nil)
+	c.Assert(err, gc.IsNil)
+
+	started := make(chan struct{}, 1)
+	nonSafeStarted := make(chan struct{}, 1)
+	s.agentSuite.PatchValue(&newSafeNetworker, func(st *apinetworker.State, conf agent.Config, confDir string) (*networker.Networker, error) {
+		select {
+		case started <- struct{}{}:
+		default:
+		}
+		return networker.NewSafeNetworker(st, conf, confDir)
+	})
+	s.agentSuite.PatchValue(&newNetworker, func(st *apinetworker.State, conf agent.Config, confDir string) (*networker.Networker, error) {
+		select {
+		case nonSafeStarted <- struct{}{}:
+		default:
+		}
+		return networker.NewNetworker(st, conf, confDir)
+	})
+	m, _, _ := s.primeAgent(c, version.Current, state.JobHostUnits)
+	a := s.newAgent(c, m)
+	defer a.Stop()
+	go func() {
+		c.Check(a.Run(nil), gc.IsNil)
+	}()
+	select {
+	case <-started:
+	case <-nonSafeStarted:
+		c.Fatalf("expected to start safe networker, but started a normal one")
+	case <-time.After(coretesting.LongWait):
+		c.Fatalf("timed out waiting for the safe networker worker to be started")
+	}
+}
+
 func (s *MachineSuite) TestMachineAgentUpgradeMongo(c *gc.C) {
 	m, agentConfig, _ := s.primeAgent(c, version.Current, state.JobManageEnviron)
 	agentConfig.SetUpgradedToVersion(version.MustParse("1.18.0"))
@@ -1070,6 +1120,58 @@ func (s *MachineWithCharmsSuite) TestManageEnvironRunsCharmRevisionUpdater(c *gc
 		}
 	}
 	c.Assert(success, gc.Equals, true)
+}
+
+type mongoSuite struct {
+	coretesting.BaseSuite
+}
+
+var _ = gc.Suite(&mongoSuite{})
+
+func (s *mongoSuite) TestStateWorkerDialSetsWriteMajority(c *gc.C) {
+	s.testStateWorkerDialSetsWriteMajority(c, true)
+}
+
+func (s *mongoSuite) TestStateWorkerDialDoesNotSetWriteMajorityWithoutReplsetConfig(c *gc.C) {
+	s.testStateWorkerDialSetsWriteMajority(c, false)
+}
+
+func (s *mongoSuite) testStateWorkerDialSetsWriteMajority(c *gc.C, configureReplset bool) {
+	inst := gitjujutesting.MgoInstance{
+		EnableJournal: true,
+		Params:        []string{"--replSet", "juju"},
+	}
+	err := inst.Start(coretesting.Certs)
+	c.Assert(err, gc.IsNil)
+	defer inst.Destroy()
+
+	var expectedWMode string
+	dialOpts := stateWorkerDialOpts
+	if configureReplset {
+		info := inst.DialInfo()
+		args := peergrouper.InitiateMongoParams{
+			DialInfo:       info,
+			MemberHostPort: inst.Addr(),
+		}
+		err = peergrouper.MaybeInitiateMongoServer(args)
+		c.Assert(err, gc.IsNil)
+		expectedWMode = "majority"
+	} else {
+		dialOpts.Direct = true
+	}
+
+	mongoInfo := mongo.Info{
+		Addrs:  []string{inst.Addr()},
+		CACert: coretesting.CACert,
+	}
+	session, err := mongo.DialWithInfo(mongoInfo, dialOpts)
+	c.Assert(err, gc.IsNil)
+	defer session.Close()
+
+	safe := session.Safe()
+	c.Assert(safe, gc.NotNil)
+	c.Assert(safe.WMode, gc.Equals, expectedWMode)
+	c.Assert(safe.J, jc.IsTrue) // always enabled
 }
 
 type singularRunnerRecord struct {

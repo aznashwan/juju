@@ -11,6 +11,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/juju/errors"
+	"github.com/juju/names"
 	"gopkg.in/mgo.v2"
 
 	"github.com/juju/juju/cert"
@@ -46,6 +48,11 @@ type DialOpts struct {
 	// specified seed servers, or to obtain information for the whole
 	// cluster and establish connections with further servers too.
 	Direct bool
+
+	// PostDial, if non-nil, is called by DialWithInfo with the
+	// mgo.Session after a successful dial but before DialWithInfo
+	// returns to its caller.
+	PostDial func(*mgo.Session) error
 }
 
 // DefaultDialOpts returns a DialOpts representing the default
@@ -68,6 +75,20 @@ type Info struct {
 	// CACert holds the CA certificate that will be used
 	// to validate the state server's certificate, in PEM format.
 	CACert string
+}
+
+// MongoInfo encapsulates information about cluster of
+// servers holding juju state and can be used to make a
+// connection to that cluster.
+type MongoInfo struct {
+	// mongo.Info contains the addresses and cert of the mongo cluster.
+	Info
+	// Tag holds the name of the entity that is connecting.
+	// It should be nil when connecting as an administrator.
+	Tag names.Tag
+
+	// Password holds the password for the connecting entity.
+	Password string
 }
 
 // DialInfo returns information on how to dial
@@ -126,6 +147,12 @@ func DialWithInfo(info Info, opts DialOpts) (*mgo.Session, error) {
 	}
 	if opts.SocketTimeout != 0 {
 		session.SetSocketTimeout(opts.SocketTimeout)
+	}
+	if opts.PostDial != nil {
+		if err := opts.PostDial(session); err != nil {
+			session.Close()
+			return nil, errors.Annotate(err, "PostDial failed")
+		}
 	}
 	return session, nil
 }

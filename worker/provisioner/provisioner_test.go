@@ -16,10 +16,15 @@ import (
 	gc "launchpad.net/gocheck"
 
 	"github.com/juju/juju/agent"
+	"github.com/juju/juju/api"
+	apiprovisioner "github.com/juju/juju/api/provisioner"
+	"github.com/juju/juju/apiserver/params"
+	apiserverprovisioner "github.com/juju/juju/apiserver/provisioner"
 	"github.com/juju/juju/constraints"
 	"github.com/juju/juju/environmentserver/authentication"
 	"github.com/juju/juju/environs"
 	"github.com/juju/juju/environs/config"
+	"github.com/juju/juju/environs/imagemetadata"
 	"github.com/juju/juju/environs/simplestreams"
 	envtesting "github.com/juju/juju/environs/testing"
 	"github.com/juju/juju/environs/tools"
@@ -29,10 +34,6 @@ import (
 	"github.com/juju/juju/network"
 	"github.com/juju/juju/provider/dummy"
 	"github.com/juju/juju/state"
-	"github.com/juju/juju/state/api"
-	"github.com/juju/juju/state/api/params"
-	apiprovisioner "github.com/juju/juju/state/api/provisioner"
-	apiserverprovisioner "github.com/juju/juju/state/apiserver/provisioner"
 	coretesting "github.com/juju/juju/testing"
 	coretools "github.com/juju/juju/tools"
 	"github.com/juju/juju/version"
@@ -455,7 +456,10 @@ func (s *ProvisionerSuite) TestPossibleTools(c *gc.C) {
 	envtesting.AssertUploadFakeToolsVersions(c, envStorage, availableVersions...)
 
 	// Extract the tools that we expect to actually match.
-	expectedList, err := tools.FindInstanceTools(s.Environ, currentVersion.Number, currentVersion.Series, nil)
+	expectedList, err := tools.FindTools(s.Environ, -1, -1, coretools.Filter{
+		Number: currentVersion.Number,
+		Series: currentVersion.Series,
+	}, tools.DoNotAllowRetry)
 	c.Assert(err, gc.IsNil)
 
 	// Create the machine and check the tools that get passed into StartInstance.
@@ -707,6 +711,9 @@ func (s *ProvisionerSuite) TestProvisioningOccursWithFixedEnvironment(c *gc.C) {
 }
 
 func (s *ProvisionerSuite) TestProvisioningDoesOccurAfterInvalidEnvironmentPublished(c *gc.C) {
+	s.PatchValue(provisioner.GetToolsFinder, func(*apiprovisioner.State) provisioner.ToolsFinder {
+		return mockToolsFinder{}
+	})
 	p := s.newEnvironProvisioner(c)
 	defer stop(c, p)
 
@@ -813,6 +820,9 @@ func (s *ProvisionerSuite) TestDyingMachines(c *gc.C) {
 }
 
 func (s *ProvisionerSuite) TestProvisioningRecoversAfterInvalidEnvironmentPublished(c *gc.C) {
+	s.PatchValue(provisioner.GetToolsFinder, func(*apiprovisioner.State) provisioner.ToolsFinder {
+		return mockToolsFinder{}
+	})
 	p := s.newEnvironProvisioner(c)
 	defer stop(c, p)
 
@@ -903,7 +913,7 @@ func (*mockMachineGetter) MachinesWithTransientErrors() ([]*apiprovisioner.Machi
 }
 
 func (s *ProvisionerSuite) TestMachineErrorsRetainInstances(c *gc.C) {
-	task := s.newProvisionerTask(c, false, s.Environ, s.provisioner)
+	task := s.newProvisionerTask(c, false, s.Environ, s.provisioner, mockToolsFinder{})
 	defer stop(c, task)
 
 	// create a machine
@@ -915,7 +925,7 @@ func (s *ProvisionerSuite) TestMachineErrorsRetainInstances(c *gc.C) {
 	s.startUnknownInstance(c, "999")
 
 	// start the provisioner and ensure it doesn't kill any instances if there are error getting machines
-	task = s.newProvisionerTask(c, false, s.Environ, &mockMachineGetter{})
+	task = s.newProvisionerTask(c, false, s.Environ, &mockMachineGetter{}, mockToolsFinder{})
 	defer func() {
 		err := task.Stop()
 		c.Assert(err, gc.ErrorMatches, ".*failed to get machine.*")
@@ -986,7 +996,11 @@ func (s *ProvisionerSuite) TestProvisioningSafeModeChange(c *gc.C) {
 }
 
 func (s *ProvisionerSuite) newProvisionerTask(
-	c *gc.C, safeMode bool, broker environs.InstanceBroker, machineGetter provisioner.MachineGetter,
+	c *gc.C,
+	safeMode bool,
+	broker environs.InstanceBroker,
+	machineGetter provisioner.MachineGetter,
+	toolsFinder provisioner.ToolsFinder,
 ) provisioner.ProvisionerTask {
 
 	machineWatcher, err := s.provisioner.WatchEnvironMachines()
@@ -995,13 +1009,22 @@ func (s *ProvisionerSuite) newProvisionerTask(
 	c.Assert(err, gc.IsNil)
 	auth, err := authentication.NewAPIAuthenticator(s.provisioner)
 	c.Assert(err, gc.IsNil)
+
 	return provisioner.NewProvisionerTask(
-		names.NewMachineTag("0"), safeMode, machineGetter,
-		machineWatcher, retryWatcher, broker, auth)
+		names.NewMachineTag("0"),
+		safeMode,
+		machineGetter,
+		toolsFinder,
+		machineWatcher,
+		retryWatcher,
+		broker,
+		auth,
+		imagemetadata.ReleasedStream,
+	)
 }
 
 func (s *ProvisionerSuite) TestTurningOffSafeModeReapsUnknownInstances(c *gc.C) {
-	task := s.newProvisionerTask(c, true, s.Environ, s.provisioner)
+	task := s.newProvisionerTask(c, true, s.Environ, s.provisioner, mockToolsFinder{})
 	defer stop(c, task)
 
 	// Initially create a machine, and an unknown instance, with safe mode on.
@@ -1025,7 +1048,7 @@ func (s *ProvisionerSuite) TestTurningOffSafeModeReapsUnknownInstances(c *gc.C) 
 func (s *ProvisionerSuite) TestProvisionerRetriesTransientErrors(c *gc.C) {
 	s.PatchValue(&apiserverprovisioner.ErrorRetryWaitDelay, 5*time.Millisecond)
 	var e environs.Environ = &mockBroker{Environ: s.Environ, retryCount: make(map[string]int)}
-	task := s.newProvisionerTask(c, false, e, s.provisioner)
+	task := s.newProvisionerTask(c, false, e, s.provisioner, mockToolsFinder{})
 	defer stop(c, task)
 
 	// Provision some machines, some will be started first time,
@@ -1070,7 +1093,7 @@ func (s *ProvisionerSuite) TestProvisionerRetriesTransientErrors(c *gc.C) {
 func (s *ProvisionerSuite) TestProvisionerObservesMachineJobs(c *gc.C) {
 	s.PatchValue(&apiserverprovisioner.ErrorRetryWaitDelay, 5*time.Millisecond)
 	broker := &mockBroker{Environ: s.Environ, retryCount: make(map[string]int)}
-	task := s.newProvisionerTask(c, false, broker, s.provisioner)
+	task := s.newProvisionerTask(c, false, broker, s.provisioner, mockToolsFinder{})
 	defer stop(c, task)
 
 	added := s.ensureAvailability(c, 3)
@@ -1108,4 +1131,18 @@ func (b *mockBroker) StartInstance(args environs.StartInstanceParams) (instance.
 
 func (b *mockBroker) GetToolsSources() ([]simplestreams.DataSource, error) {
 	return b.Environ.(tools.SupportsCustomSources).GetToolsSources()
+}
+
+type mockToolsFinder struct {
+}
+
+func (f mockToolsFinder) FindTools(number version.Number, series string, arch *string) (coretools.List, error) {
+	v, err := version.ParseBinary(fmt.Sprintf("%s-%s-%s", number, series, version.Current.Arch))
+	if err != nil {
+		return nil, err
+	}
+	if arch != nil {
+		v.Arch = *arch
+	}
+	return coretools.List{&coretools.Tools{Version: v}}, nil
 }

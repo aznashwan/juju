@@ -133,9 +133,6 @@ func SetAdminMongoPassword(session *mgo.Session, user, password string) error {
 		}); err != nil {
 			return fmt.Errorf("cannot set admin password: %v", err)
 		}
-		if err := admin.Login(user, password); err != nil {
-			return fmt.Errorf("cannot login after setting password: %v", err)
-		}
 	} else {
 		if err := admin.RemoveUser(user); err != nil && err != mgo.ErrNotFound {
 			return fmt.Errorf("cannot disable admin password: %v", err)

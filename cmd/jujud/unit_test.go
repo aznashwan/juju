@@ -12,12 +12,12 @@ import (
 	gc "launchpad.net/gocheck"
 
 	"github.com/juju/juju/agent"
+	apirsyslog "github.com/juju/juju/api/rsyslog"
+	"github.com/juju/juju/apiserver/params"
 	envtesting "github.com/juju/juju/environs/testing"
 	jujutesting "github.com/juju/juju/juju/testing"
 	"github.com/juju/juju/network"
 	"github.com/juju/juju/state"
-	"github.com/juju/juju/state/api/params"
-	apirsyslog "github.com/juju/juju/state/api/rsyslog"
 	coretesting "github.com/juju/juju/testing"
 	"github.com/juju/juju/tools"
 	"github.com/juju/juju/version"
@@ -260,6 +260,36 @@ func (s *UnitSuite) TestRsyslogConfigWorker(c *gc.C) {
 		c.Fatalf("timeout while waiting for rsyslog worker to be created")
 	case mode := <-created:
 		c.Assert(mode, gc.Equals, rsyslog.RsyslogModeForwarding)
+	}
+}
+
+func (s *UnitSuite) TestAgentSetsToolsVersion(c *gc.C) {
+	_, unit, _, _ := s.primeAgent(c)
+	vers := version.Current
+	vers.Minor = version.Current.Minor + 1
+	err := unit.SetAgentVersion(vers)
+	c.Assert(err, gc.IsNil)
+
+	a := s.newAgent(c, unit)
+	go func() { c.Check(a.Run(nil), gc.IsNil) }()
+	defer func() { c.Check(a.Stop(), gc.IsNil) }()
+
+	timeout := time.After(coretesting.LongWait)
+	for done := false; !done; {
+		select {
+		case <-timeout:
+			c.Fatalf("timeout while waiting for agent version to be set")
+		case <-time.After(coretesting.ShortWait):
+			err := unit.Refresh()
+			c.Assert(err, gc.IsNil)
+			agentTools, err := unit.AgentTools()
+			c.Assert(err, gc.IsNil)
+			if agentTools.Version.Minor != version.Current.Minor {
+				continue
+			}
+			c.Assert(agentTools.Version, gc.DeepEquals, version.Current)
+			done = true
+		}
 	}
 }
 

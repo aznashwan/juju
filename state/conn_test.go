@@ -6,7 +6,9 @@ package state_test
 import (
 	stdtesting "testing"
 
+	"github.com/juju/names"
 	gitjujutesting "github.com/juju/testing"
+	jc "github.com/juju/testing/checkers"
 	"gopkg.in/mgo.v2"
 	gc "launchpad.net/gocheck"
 
@@ -36,6 +38,7 @@ type ConnSuite struct {
 	State        *state.State
 	policy       statetesting.MockPolicy
 	factory      *factory.Factory
+	envTag       names.EnvironTag
 }
 
 func (cs *ConnSuite) SetUpSuite(c *gc.C) {
@@ -49,10 +52,15 @@ func (cs *ConnSuite) TearDownSuite(c *gc.C) {
 }
 
 func (cs *ConnSuite) SetUpTest(c *gc.C) {
+	c.Log("SetUpTest")
 	cs.BaseSuite.SetUpTest(c)
 	cs.MgoSuite.SetUpTest(c)
 	cs.policy = statetesting.MockPolicy{}
-	cs.State = TestingInitialize(c, nil, &cs.policy)
+	cfg := testing.EnvironConfig(c)
+	cs.State = TestingInitialize(c, cfg, &cs.policy)
+	uuid, ok := cfg.UUID()
+	c.Assert(ok, jc.IsTrue)
+	cs.envTag = names.NewEnvironTag(uuid)
 	cs.annotations = cs.MgoSuite.Session.DB("juju").C("annotations")
 	cs.charms = cs.MgoSuite.Session.DB("juju").C("charms")
 	cs.machines = cs.MgoSuite.Session.DB("juju").C("machines")
@@ -61,7 +69,8 @@ func (cs *ConnSuite) SetUpTest(c *gc.C) {
 	cs.units = cs.MgoSuite.Session.DB("juju").C("units")
 	cs.stateServers = cs.MgoSuite.Session.DB("juju").C("stateServers")
 	cs.State.AddAdminUser("pass")
-	cs.factory = factory.NewFactory(cs.State, c)
+	cs.factory = factory.NewFactory(cs.State)
+	c.Log("SetUpTest done")
 }
 
 func (cs *ConnSuite) TearDownTest(c *gc.C) {

@@ -12,12 +12,12 @@ import (
 	"launchpad.net/tomb"
 
 	"github.com/juju/juju/agent"
+	apiprovisioner "github.com/juju/juju/api/provisioner"
+	apiwatcher "github.com/juju/juju/api/watcher"
 	"github.com/juju/juju/environmentserver/authentication"
 	"github.com/juju/juju/environs"
 	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/instance"
-	apiprovisioner "github.com/juju/juju/state/api/provisioner"
-	apiwatcher "github.com/juju/juju/state/api/watcher"
 	"github.com/juju/juju/state/watcher"
 	"github.com/juju/juju/worker"
 )
@@ -100,6 +100,12 @@ func (p *provisioner) Stop() error {
 	return p.tomb.Wait()
 }
 
+// getToolsFinder returns a ToolsFinder for the provided State.
+// This exists for mocking.
+var getToolsFinder = func(st *apiprovisioner.State) ToolsFinder {
+	return st
+}
+
 // getStartTask creates a new worker for the provisioner,
 func (p *provisioner) getStartTask(safeMode bool) (ProvisionerTask, error) {
 	auth, err := authentication.NewAPIAuthenticator(p.st)
@@ -121,9 +127,23 @@ func (p *provisioner) getStartTask(safeMode bool) (ProvisionerTask, error) {
 	if !ok {
 		errors.Errorf("expacted names.MachineTag, got %T", tag)
 	}
+
+	envCfg, err := p.st.EnvironConfig()
+	if err != nil {
+		return nil, errors.Annotate(err, "could not retrieve the environment config.")
+	}
+
 	task := NewProvisionerTask(
-		machineTag, safeMode, p.st,
-		machineWatcher, retryWatcher, p.broker, auth)
+		machineTag,
+		safeMode,
+		p.st,
+		getToolsFinder(p.st),
+		machineWatcher,
+		retryWatcher,
+		p.broker,
+		auth,
+		envCfg.ImageStream(),
+	)
 	return task, nil
 }
 

@@ -13,16 +13,15 @@ import (
 	"github.com/juju/utils/set"
 	"launchpad.net/tomb"
 
+	apiprovisioner "github.com/juju/juju/api/provisioner"
+	apiwatcher "github.com/juju/juju/api/watcher"
+	"github.com/juju/juju/apiserver/params"
 	"github.com/juju/juju/constraints"
 	"github.com/juju/juju/environmentserver/authentication"
 	"github.com/juju/juju/environs"
 	"github.com/juju/juju/environs/cloudinit"
-	"github.com/juju/juju/environs/tools"
 	"github.com/juju/juju/instance"
 	"github.com/juju/juju/network"
-	"github.com/juju/juju/state/api/params"
-	apiprovisioner "github.com/juju/juju/state/api/provisioner"
-	apiwatcher "github.com/juju/juju/state/api/watcher"
 	"github.com/juju/juju/state/watcher"
 	coretools "github.com/juju/juju/tools"
 	"github.com/juju/juju/version"
@@ -47,20 +46,32 @@ type MachineGetter interface {
 	MachinesWithTransientErrors() ([]*apiprovisioner.Machine, []params.StatusResult, error)
 }
 
+// ToolsFinder is an interface used for finding tools to run on
+// provisioned instances.
+type ToolsFinder interface {
+	// FindTools returns a list of tools matching the specified
+	// version and series, and optionally arch.
+	FindTools(version version.Number, series string, arch *string) (coretools.List, error)
+}
+
 var _ MachineGetter = (*apiprovisioner.State)(nil)
+var _ ToolsFinder = (*apiprovisioner.State)(nil)
 
 func NewProvisionerTask(
 	machineTag names.MachineTag,
 	safeMode bool,
 	machineGetter MachineGetter,
+	toolsFinder ToolsFinder,
 	machineWatcher apiwatcher.StringsWatcher,
 	retryWatcher apiwatcher.NotifyWatcher,
 	broker environs.InstanceBroker,
 	auth authentication.AuthenticationProvider,
+	imageStream string,
 ) ProvisionerTask {
 	task := &provisionerTask{
 		machineTag:     machineTag,
 		machineGetter:  machineGetter,
+		toolsFinder:    toolsFinder,
 		machineWatcher: machineWatcher,
 		retryWatcher:   retryWatcher,
 		broker:         broker,
@@ -68,6 +79,7 @@ func NewProvisionerTask(
 		safeMode:       safeMode,
 		safeModeChan:   make(chan bool, 1),
 		machines:       make(map[string]*apiprovisioner.Machine),
+		imageStream:    imageStream,
 	}
 	go func() {
 		defer task.tomb.Done()
@@ -79,11 +91,13 @@ func NewProvisionerTask(
 type provisionerTask struct {
 	machineTag     names.MachineTag
 	machineGetter  MachineGetter
+	toolsFinder    ToolsFinder
 	machineWatcher apiwatcher.StringsWatcher
 	retryWatcher   apiwatcher.NotifyWatcher
 	broker         environs.InstanceBroker
 	tomb           tomb.Tomb
 	auth           authentication.AuthenticationProvider
+	imageStream    string
 
 	safeMode     bool
 	safeModeChan chan bool
@@ -205,8 +219,7 @@ func (task *provisionerTask) processMachinesWithTransientErrors() error {
 func (task *provisionerTask) processMachines(ids []string) error {
 	logger.Tracef("processMachines(%v)", ids)
 	// Populate the tasks maps of current instances and machines.
-	err := task.populateMachineMaps(ids)
-	if err != nil {
+	if err := task.populateMachineMaps(ids); err != nil {
 		return err
 	}
 
@@ -407,9 +420,79 @@ func (task *provisionerTask) stopInstances(instances []instance.Instance) error 
 	return nil
 }
 
+func (task *provisionerTask) constructMachineConfig(
+	machine *apiprovisioner.Machine,
+	auth authentication.AuthenticationProvider,
+	pInfo *params.ProvisioningInfo,
+) (*cloudinit.MachineConfig, error) {
+
+	stateInfo, apiInfo, err := auth.SetupAuthentication(machine)
+	if err != nil {
+		return nil, errors.Annotate(err, "failed to setup authentication")
+	}
+
+	// Generated a nonce for the new instance, with the format: "machine-#:UUID".
+	// The first part is a badge, specifying the tag of the machine the provisioner
+	// is running on, while the second part is a random UUID.
+	uuid, err := utils.NewUUID()
+	if err != nil {
+		return nil, errors.Annotate(err, "failed to generate a nonce for machine "+machine.Id())
+	}
+
+	nonce := fmt.Sprintf("%s:%s", task.machineTag, uuid)
+	return environs.NewMachineConfig(
+		machine.Id(),
+		nonce,
+		task.imageStream,
+		pInfo.Series,
+		nil,
+		stateInfo,
+		apiInfo,
+	)
+}
+
+func constructStartInstanceParams(
+	machine *apiprovisioner.Machine,
+	machineConfig *cloudinit.MachineConfig,
+	provisioningInfo *params.ProvisioningInfo,
+	possibleTools coretools.List,
+) environs.StartInstanceParams {
+	return environs.StartInstanceParams{
+		Constraints:       provisioningInfo.Constraints,
+		Tools:             possibleTools,
+		MachineConfig:     machineConfig,
+		Placement:         provisioningInfo.Placement,
+		DistributionGroup: machine.DistributionGroup,
+	}
+}
+
 func (task *provisionerTask) startMachines(machines []*apiprovisioner.Machine) error {
 	for _, m := range machines {
-		if err := task.startMachine(m); err != nil {
+
+		pInfo, err := task.blockUntilProvisioned(m.ProvisioningInfo)
+		if err != nil {
+			return err
+		}
+
+		machineCfg, err := task.constructMachineConfig(m, task.auth, pInfo)
+		if err != nil {
+			return err
+		}
+
+		assocProvInfoAndMachCfg(pInfo, machineCfg)
+
+		possibleTools, err := task.toolsFinder.FindTools(
+			version.Current.Number,
+			pInfo.Series,
+			pInfo.Constraints.Arch,
+		)
+		if err != nil {
+			return task.setErrorStatus("cannot find tools for machine %q: %v", m, err)
+		}
+
+		startInstanceParams := constructStartInstanceParams(m, machineCfg, pInfo, possibleTools)
+
+		if err := task.startMachine(m, pInfo, startInstanceParams); err != nil {
 			return errors.Annotatef(err, "cannot start machine %v", m)
 		}
 	}
@@ -453,29 +536,21 @@ func (task *provisionerTask) prepareNetworkAndInterfaces(networkInfo []network.I
 	return networks, ifaces
 }
 
-func (task *provisionerTask) startMachine(machine *apiprovisioner.Machine) error {
-	provisioningInfo, err := task.provisioningInfo(machine)
-	if err != nil {
-		return err
-	}
-	possibleTools, err := task.possibleTools(provisioningInfo.Series, provisioningInfo.Constraints)
-	if err != nil {
-		return task.setErrorStatus("cannot find tools for machine %q: %v", machine, err)
-	}
-	inst, metadata, networkInfo, err := task.broker.StartInstance(environs.StartInstanceParams{
-		Constraints:       provisioningInfo.Constraints,
-		Tools:             possibleTools,
-		MachineConfig:     provisioningInfo.MachineConfig,
-		Placement:         provisioningInfo.Placement,
-		DistributionGroup: machine.DistributionGroup,
-	})
+func (task *provisionerTask) startMachine(
+	machine *apiprovisioner.Machine,
+	provisioningInfo *params.ProvisioningInfo,
+	startInstanceParams environs.StartInstanceParams,
+) error {
+
+	inst, metadata, networkInfo, err := task.broker.StartInstance(startInstanceParams)
 	if err != nil {
 		// Set the state to error, so the machine will be skipped next
 		// time until the error is resolved, but don't return an
 		// error; just keep going with the other machines.
 		return task.setErrorStatus("cannot start instance for machine %q: %v", machine, err)
 	}
-	nonce := provisioningInfo.MachineConfig.MachineNonce
+
+	nonce := startInstanceParams.MachineConfig.MachineNonce
 	networks, ifaces := task.prepareNetworkAndInterfaces(networkInfo)
 
 	err = machine.SetInstanceInfo(inst.Id(), nonce, metadata, networks, ifaces)
@@ -494,16 +569,6 @@ func (task *provisionerTask) startMachine(machine *apiprovisioner.Machine) error
 	return nil
 }
 
-func (task *provisionerTask) possibleTools(series string, cons constraints.Value) (coretools.List, error) {
-	if env, ok := task.broker.(environs.Environ); ok {
-		return tools.FindInstanceTools(env, version.Current.Number, series, cons.Arch)
-	}
-	if hasTools, ok := task.broker.(coretools.HasTools); ok {
-		return hasTools.Tools(series), nil
-	}
-	panic(fmt.Errorf("broker of type %T does not provide any tools", task.broker))
-}
-
 type provisioningInfo struct {
 	Constraints   constraints.Value
 	Series        string
@@ -511,23 +576,35 @@ type provisioningInfo struct {
 	MachineConfig *cloudinit.MachineConfig
 }
 
-func (task *provisionerTask) provisioningInfo(machine *apiprovisioner.Machine) (*provisioningInfo, error) {
-	stateInfo, apiInfo, err := task.auth.SetupAuthentication(machine)
-	if err != nil {
-		return nil, errors.Annotate(err, "failed to setup authentication")
+func assocProvInfoAndMachCfg(
+	provInfo *params.ProvisioningInfo,
+	machineConfig *cloudinit.MachineConfig,
+) *provisioningInfo {
+
+	machineConfig.Networks = provInfo.Networks
+
+	if len(provInfo.Jobs) > 0 {
+		machineConfig.Jobs = provInfo.Jobs
 	}
-	// Generated a nonce for the new instance, with the format: "machine-#:UUID".
-	// The first part is a badge, specifying the tag of the machine the provisioner
-	// is running on, while the second part is a random UUID.
-	uuid, err := utils.NewUUID()
-	if err != nil {
-		return nil, err
+
+	return &provisioningInfo{
+		Constraints:   provInfo.Constraints,
+		Series:        provInfo.Series,
+		Placement:     provInfo.Placement,
+		MachineConfig: machineConfig,
 	}
-	// ProvisioningInfo is new in 1.20; wait for the API server to be upgraded
-	// so we don't spew errors on upgrade.
+}
+
+// ProvisioningInfo is new in 1.20; wait for the API server to be
+// upgraded so we don't spew errors on upgrade.
+func (task *provisionerTask) blockUntilProvisioned(
+	provision func() (*params.ProvisioningInfo, error),
+) (*params.ProvisioningInfo, error) {
+
 	var pInfo *params.ProvisioningInfo
+	var err error
 	for {
-		if pInfo, err = machine.ProvisioningInfo(); err == nil {
+		if pInfo, err = provision(); err == nil {
 			break
 		}
 		if params.IsCodeNotImplemented(err) {
@@ -541,15 +618,6 @@ func (task *provisionerTask) provisioningInfo(machine *apiprovisioner.Machine) (
 		}
 		return nil, err
 	}
-	nonce := fmt.Sprintf("%s:%s", task.machineTag, uuid)
-	machineConfig := environs.NewMachineConfig(machine.Id(), nonce, pInfo.Networks, stateInfo, apiInfo)
-	if len(pInfo.Jobs) > 0 {
-		machineConfig.Jobs = pInfo.Jobs
-	}
-	return &provisioningInfo{
-		Constraints:   pInfo.Constraints,
-		Series:        pInfo.Series,
-		Placement:     pInfo.Placement,
-		MachineConfig: machineConfig,
-	}, nil
+
+	return pInfo, nil
 }

@@ -18,11 +18,11 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/mgo.v2/txn"
 
+	"github.com/juju/juju/apiserver/params"
 	"github.com/juju/juju/constraints"
 	"github.com/juju/juju/instance"
 	"github.com/juju/juju/mongo"
 	"github.com/juju/juju/network"
-	"github.com/juju/juju/state/api/params"
 	"github.com/juju/juju/state/presence"
 	"github.com/juju/juju/tools"
 	"github.com/juju/juju/version"
@@ -94,7 +94,7 @@ func (job MachineJob) String() string {
 }
 
 // machineDoc represents the internal state of a machine in MongoDB.
-// Note the correspondence with MachineInfo in state/api/params.
+// Note the correspondence with MachineInfo in apiserver/params.
 type machineDoc struct {
 	Id            string `bson:"_id"`
 	Nonce         string
@@ -255,7 +255,7 @@ func (m *Machine) SetHasVote(hasVote bool) error {
 		Update: bson.D{{"$set", bson.D{{"hasvote", hasVote}}}},
 	}}
 	if err := m.st.runTransaction(ops); err != nil {
-		return fmt.Errorf("cannot set HasVote of machine %v: %v", m, onAbort(err, errDead))
+		return fmt.Errorf("cannot set HasVote of machine %v: %v", m, onAbort(err, ErrDead))
 	}
 	m.doc.HasVote = hasVote
 	return nil
@@ -323,7 +323,7 @@ func (m *Machine) SetAgentVersion(v version.Binary) (err error) {
 		Update: bson.D{{"$set", bson.D{{"tools", tools}}}},
 	}}
 	if err := m.st.runTransaction(ops); err != nil {
-		return onAbort(err, errDead)
+		return onAbort(err, ErrDead)
 	}
 	m.doc.Tools = tools
 	return nil
@@ -334,7 +334,7 @@ func (m *Machine) SetAgentVersion(v version.Binary) (err error) {
 // are invalidated.
 func (m *Machine) SetMongoPassword(password string) error {
 	if !m.IsManager() {
-		return errors.NotSupportedf("setting mongo password for non-manager machine %v", m)
+		return errors.NotSupportedf("setting mongo password for non-state server machine %v", m)
 	}
 	return mongo.SetAdminMongoPassword(m.st.db.Session, m.Tag().String(), password)
 }
@@ -358,7 +358,7 @@ func (m *Machine) setPasswordHash(passwordHash string) error {
 		Update: bson.D{{"$set", bson.D{{"passwordhash", passwordHash}}}},
 	}}
 	if err := m.st.runTransaction(ops); err != nil {
-		return fmt.Errorf("cannot set password of machine %v: %v", m, onAbort(err, errDead))
+		return fmt.Errorf("cannot set password of machine %v: %v", m, onAbort(err, ErrDead))
 	}
 	m.doc.PasswordHash = passwordHash
 	return nil
@@ -670,13 +670,13 @@ func (m *Machine) Refresh() error {
 	machines, closer := m.st.getCollection(machinesC)
 	defer closer()
 
-	doc := machineDoc{}
+	var doc machineDoc
 	err := machines.FindId(m.doc.Id).One(&doc)
 	if err == mgo.ErrNotFound {
 		return errors.NotFoundf("machine %v", m)
 	}
 	if err != nil {
-		return fmt.Errorf("cannot refresh machine %v: %v", m, err)
+		return errors.Annotatef(err, "cannot refresh machine %v", m)
 	}
 	m.doc = doc
 	return nil
@@ -1010,7 +1010,7 @@ func (m *Machine) setAddresses(addresses []network.Address, field *[]address, fi
 			}
 		}
 		if m.doc.Life == Dead {
-			return nil, errDead
+			return nil, ErrDead
 		}
 		op := txn.Op{
 			C:      machinesC,
@@ -1329,7 +1329,9 @@ func (m *Machine) updateSupportedContainers(supportedContainers []instance.Conta
 		},
 	}
 	if err = m.st.runTransaction(ops); err != nil {
-		return fmt.Errorf("cannot update supported containers of machine %v: %v", m, onAbort(err, errDead))
+		err = onAbort(err, ErrDead)
+		logger.Errorf("cannot update supported containers of machine %v: %v", m, err)
+		return err
 	}
 	m.doc.SupportedContainers = supportedContainers
 	m.doc.SupportedContainersKnown = true

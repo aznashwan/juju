@@ -11,7 +11,7 @@ import (
 	"github.com/juju/errors"
 	"gopkg.in/mgo.v2"
 
-	"github.com/juju/juju/state/api/params"
+	"github.com/juju/juju/apiserver/params"
 	"github.com/juju/juju/state/multiwatcher"
 	"github.com/juju/juju/state/watcher"
 )
@@ -150,6 +150,9 @@ func (m *backingUnit) mongoId() interface{} {
 type backingService serviceDoc
 
 func (svc *backingService) updated(st *State, store *multiwatcher.Store, id interface{}) error {
+	if svc.CharmURL == nil {
+		return errors.Errorf("charm url is nil")
+	}
 
 	info := &params.ServiceInfo{
 		Name:     svc.Name,

@@ -18,7 +18,7 @@ import (
 // MongoDB. Note that the annotations map is not maintained in local storage
 // due to the fact that it is not accessed directly, but through
 // Annotations/Annotation below.
-// Note also the correspondence with AnnotationInfo in state/api/params.
+// Note also the correspondence with AnnotationInfo in apiserver/params.
 type annotatorDoc struct {
 	GlobalKey   string `bson:"_id"`
 	Tag         string
@@ -40,9 +40,9 @@ func (a *annotator) SetAnnotations(pairs map[string]string) (err error) {
 		return nil
 	}
 	// Collect in separate maps pairs to be inserted/updated or removed.
-	toRemove := make(map[string]bool)
+	toRemove := make(bson.M)
 	toInsert := make(map[string]string)
-	toUpdate := make(map[string]string)
+	toUpdate := make(bson.M)
 	for key, value := range pairs {
 		if strings.Contains(key, ".") {
 			return fmt.Errorf("invalid key %q", key)
@@ -105,12 +105,12 @@ func (a *annotator) insertOps(toInsert map[string]string) ([]txn.Op, error) {
 }
 
 // updateOps returns the operations required to update or remove annotations in MongoDB.
-func (a *annotator) updateOps(toUpdate map[string]string, toRemove map[string]bool) []txn.Op {
+func (a *annotator) updateOps(toUpdate, toRemove bson.M) []txn.Op {
 	return []txn.Op{{
 		C:      annotationsC,
 		Id:     a.globalKey,
 		Assert: txn.DocExists,
-		Update: bson.D{{"$set", toUpdate}, {"$unset", toRemove}},
+		Update: setUnsetUpdate(toUpdate, toRemove),
 	}}
 }
 

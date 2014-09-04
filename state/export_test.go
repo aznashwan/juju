@@ -13,14 +13,21 @@ import (
 	jujutxn "github.com/juju/txn"
 	txntesting "github.com/juju/txn/testing"
 	"github.com/juju/utils/set"
-	"gopkg.in/juju/charm.v2"
-	charmtesting "gopkg.in/juju/charm.v2/testing"
+	"gopkg.in/juju/charm.v3"
+	charmtesting "gopkg.in/juju/charm.v3/testing"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/mgo.v2/txn"
 	gc "launchpad.net/gocheck"
 
 	"github.com/juju/juju/instance"
+)
+
+var (
+	GetBackupMetadata   = getBackupMetadata
+	AddBackupMetadata   = addBackupMetadata
+	AddBackupMetadataID = addBackupMetadataID
+	SetBackupStored     = setBackupStored
 )
 
 func SetTestHooks(c *gc.C, st *State, hooks ...jujutxn.TestHook) txntesting.TransactionChecker {
@@ -85,10 +92,12 @@ func AddTestingCharm(c *gc.C, st *State, name string) *Charm {
 }
 
 func AddTestingService(c *gc.C, st *State, name string, ch *Charm) *Service {
+	c.Assert(ch, gc.NotNil)
 	return AddTestingServiceWithNetworks(c, st, name, ch, nil)
 }
 
 func AddTestingServiceWithNetworks(c *gc.C, st *State, name string, ch *Charm, networks []string) *Service {
+	c.Assert(ch, gc.NotNil)
 	service, err := st.AddService(name, "user-admin", ch, networks)
 	c.Assert(err, gc.IsNil)
 	return service
@@ -245,4 +254,5 @@ func WatcherMakeIdFilter(marker string, receivers ...ActionReceiver) func(interf
 var (
 	GetOrCreatePorts = getOrCreatePorts
 	GetPorts         = getPorts
+	NowToTheSecond   = nowToTheSecond
 )

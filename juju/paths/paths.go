@@ -24,10 +24,10 @@ var linuxVals = map[osVarType]string{
 
 // made these paths feature backslashes so as to be properly processed
 var winVals = map[osVarType]string{
-	tmpDir:  "C:\\Juju\\tmp",
-	logDir:  "C:\\Juju\\log",
-	dataDir: "C:\\Juju\\lib\\juju",
-	jujuRun: "C:\\Juju\\bin\\juju-run",
+	tmpDir:  "C:/Juju/tmp",
+	logDir:  "C:/Juju/log",
+	dataDir: "C:/Juju/lib/juju",
+	jujuRun: "C:/Juju/bin/juju-run.exe",
 }
 
 // osVal will lookup the value of the key valname

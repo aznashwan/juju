@@ -16,12 +16,12 @@ import (
 	gc "launchpad.net/gocheck"
 
 	"github.com/juju/juju/agent"
+	"github.com/juju/juju/api"
+	"github.com/juju/juju/api/environment"
 	"github.com/juju/juju/environs/config"
 	jujutesting "github.com/juju/juju/juju/testing"
 	"github.com/juju/juju/provider"
 	"github.com/juju/juju/state"
-	"github.com/juju/juju/state/api"
-	"github.com/juju/juju/state/api/environment"
 	"github.com/juju/juju/testing"
 	"github.com/juju/juju/worker"
 	"github.com/juju/juju/worker/machineenvironmentworker"
@@ -162,12 +162,12 @@ func (s *MachineEnvironmentWatcherSuite) TestInitialState(c *gc.C) {
 }
 
 func (s *MachineEnvironmentWatcherSuite) TestRespondsToEvents(c *gc.C) {
+	proxySettings, aptProxySettings := s.updateConfig(c)
+
 	agentConfig := agentConfig(names.NewMachineTag("0"), "ec2")
 	envWorker := s.makeWorker(c, agentConfig)
 	defer worker.Stop(envWorker)
 	s.waitForPostSetup(c)
-
-	proxySettings, aptProxySettings := s.updateConfig(c)
 
 	s.waitProxySettings(c, proxySettings)
 	s.waitForFile(c, s.proxyFile, proxySettings.AsScriptEnvironment()+"\n")

@@ -22,9 +22,11 @@ import (
 	gc "launchpad.net/gocheck"
 	"launchpad.net/gwacl"
 
+	"github.com/juju/juju/api"
+	apiparams "github.com/juju/juju/apiserver/params"
 	"github.com/juju/juju/constraints"
-	"github.com/juju/juju/environmentserver/authentication"
 	"github.com/juju/juju/environs"
+	"github.com/juju/juju/environs/bootstrap"
 	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/environs/imagemetadata"
 	"github.com/juju/juju/environs/instances"
@@ -34,9 +36,8 @@ import (
 	"github.com/juju/juju/environs/tools"
 	"github.com/juju/juju/instance"
 	"github.com/juju/juju/mongo"
+	"github.com/juju/juju/network"
 	"github.com/juju/juju/provider/common"
-	"github.com/juju/juju/state/api"
-	apiparams "github.com/juju/juju/state/api/params"
 	coretesting "github.com/juju/juju/testing"
 	"github.com/juju/juju/version"
 )
@@ -1168,11 +1169,16 @@ func (s *environSuite) TestInitialPorts(c *gc.C) {
 		gwacl.PatchManagementAPIResponses(responses)
 		ports, err := inst.Ports("")
 		c.Assert(err, gc.IsNil)
-		portmap := make(map[int]bool)
-		for _, port := range ports {
-			portmap[port.Number] = true
+		portmap := make(map[network.PortRange]bool)
+		for _, portRange := range ports {
+			portmap[portRange] = true
 		}
-		return portmap[env.Config().APIPort()]
+		apiPortRange := network.PortRange{
+			Protocol: "tcp",
+			FromPort: env.Config().APIPort(),
+			ToPort:   env.Config().APIPort(),
+		}
+		return portmap[apiPortRange]
 	}
 	c.Check(inst1, gc.Not(jc.Satisfies), reportsStateServerPorts)
 	c.Check(inst2, jc.Satisfies, reportsStateServerPorts)
@@ -1531,7 +1537,7 @@ func (s *startInstanceSuite) SetUpTest(c *gc.C) {
 	s.env = s.setupEnvWithDummyMetadata(c)
 	s.env.ecfg.attrs["force-image-name"] = "my-image"
 	machineTag := names.NewMachineTag("1")
-	stateInfo := &authentication.MongoInfo{
+	stateInfo := &mongo.MongoInfo{
 		Info: mongo.Info{
 			CACert: coretesting.CACert,
 			Addrs:  []string{"localhost:123"},
@@ -1545,13 +1551,13 @@ func (s *startInstanceSuite) SetUpTest(c *gc.C) {
 		Password: "admin",
 		Tag:      machineTag,
 	}
+	mcfg, err := environs.NewMachineConfig("1", "yanonce", imagemetadata.ReleasedStream, "quantal", nil, stateInfo, apiInfo)
+	c.Assert(err, gc.IsNil)
 	s.params = environs.StartInstanceParams{
 		Tools: envtesting.AssertUploadFakeToolsVersions(
 			c, s.env.storage, envtesting.V120p...,
 		),
-		MachineConfig: environs.NewMachineConfig(
-			"1", "yanonce", nil, stateInfo, apiInfo,
-		),
+		MachineConfig: mcfg,
 	}
 }
 
@@ -1652,9 +1658,9 @@ func (s *environSuite) TestConstraintsValidatorVocab(c *gc.C) {
 	env := s.setupEnvWithDummyMetadata(c)
 	validator, err := env.ConstraintsValidator()
 	c.Assert(err, gc.IsNil)
-	cons := constraints.MustParse("arch=ppc64")
+	cons := constraints.MustParse("arch=ppc64el")
 	_, err = validator.Validate(cons)
-	c.Assert(err, gc.ErrorMatches, "invalid constraint value: arch=ppc64\nvalid values are:.*")
+	c.Assert(err, gc.ErrorMatches, "invalid constraint value: arch=ppc64el\nvalid values are:.*")
 	cons = constraints.MustParse("instance-type=foo")
 	_, err = validator.Validate(cons)
 	c.Assert(err, gc.ErrorMatches, "invalid constraint value: instance-type=foo\nvalid values are:.*")
@@ -1698,6 +1704,6 @@ func (s *environSuite) TestBootstrapReusesAffinityGroupAndVNet(c *gc.C) {
 	})
 	s.PatchValue(&version.Current.Number, version.MustParse("1.2.0"))
 	envtesting.AssertUploadFakeToolsVersions(c, env.storage, envtesting.V120p...)
-	err = env.Bootstrap(coretesting.Context(c), environs.BootstrapParams{})
+	err = bootstrap.Bootstrap(coretesting.Context(c), env, bootstrap.BootstrapParams{})
 	c.Assert(err, gc.ErrorMatches, "cannot start bootstrap instance: no instance for you")
 }

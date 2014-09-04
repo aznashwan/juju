@@ -17,18 +17,17 @@ import (
 	"github.com/juju/utils"
 	"github.com/juju/utils/apt"
 	"github.com/juju/utils/proxy"
-	"launchpad.net/goyaml"
+	goyaml "gopkg.in/yaml.v1"
 
 	"github.com/juju/juju/agent"
 	agenttools "github.com/juju/juju/agent/tools"
+	"github.com/juju/juju/api"
+	"github.com/juju/juju/apiserver/params"
 	"github.com/juju/juju/cloudinit"
 	"github.com/juju/juju/constraints"
-	"github.com/juju/juju/environmentserver/authentication"
 	"github.com/juju/juju/environs/config"
 	"github.com/juju/juju/instance"
-	"github.com/juju/juju/service/upstart"
-	"github.com/juju/juju/state/api"
-	"github.com/juju/juju/state/api/params"
+	"github.com/juju/juju/mongo"
 	coretools "github.com/juju/juju/tools"
 	"github.com/juju/juju/version"
 )
@@ -54,7 +53,7 @@ type MachineConfig struct {
 	// (StateServer is set), there must be at least one state server address supplied.
 	// The entity name must match that of the machine being started,
 	// or be empty when starting a state server.
-	MongoInfo *authentication.MongoInfo
+	MongoInfo *mongo.MongoInfo
 
 	// APIInfo holds the means for the new instance to communicate with the
 	// juju state API. Unless the new machine is running a state server (StateServer is
@@ -128,14 +127,8 @@ type MachineConfig struct {
 	// that it shouldn't verify SSL certificates
 	DisableSSLHostnameVerification bool
 
-	// SystemPrivateSSHKey is created at bootstrap time and recorded on every
-	// node that has an API server. At this stage, that is any machine where
-	// StateServer (member above) is set to true.
-	SystemPrivateSSHKey string
-
-	// DisablePackageCommands is a flag that specifies whether to suppress
-	// the addition of package management commands.
-	DisablePackageCommands bool
+	// Series represents the machine series.
+	Series string
 
 	// MachineAgentServiceName is the Upstart service name for the Juju machine agent.
 	MachineAgentServiceName string
@@ -151,6 +144,18 @@ type MachineConfig struct {
 	// and when set IPv6 addresses for connecting to the API/state
 	// servers will be preferred over IPv4 ones.
 	PreferIPv6 bool
+
+	// The type of Simple Stream to download and deploy on this machine.
+	ImageStream string
+
+	// EnableOSRefreshUpdate specifies whether Juju will refresh its
+	// respective OS's updates list.
+	EnableOSRefreshUpdate bool
+
+	// EnableOSUpgrade defines Juju's behavior when provisioning
+	// machines. If enabled, the OS will perform any upgrades
+	// available as part of its provisioning.
+	EnableOSUpgrade bool
 }
 
 func base64yaml(m *config.Config) string {
@@ -162,67 +167,41 @@ func base64yaml(m *config.Config) string {
 	return base64.StdEncoding.EncodeToString(data)
 }
 
-// Configure updates the provided cloudinit.Config with
-// configuration to initialize a Juju machine agent.
-func Configure(cfg *MachineConfig, c *cloudinit.Config) error {
-	if err := ConfigureBasic(cfg, c); err != nil {
-		return err
-	}
-	return ConfigureJuju(cfg, c)
-}
-
 // NonceFile is written by cloud-init as the last thing it does.
 // The file will contain the machine's nonce. The filename is
 // relative to the Juju data-dir.
 const NonceFile = "nonce.txt"
 
-// ConfigureBasic updates the provided cloudinit.Config with
-// basic configuration to initialise an OS image, such that it can
-// be connected to via SSH, and log to a standard location.
-//
-// Any potentially failing operation should not be added to the
-// configuration, but should instead be done in ConfigureJuju.
-//
-// Note: we don't do apt update/upgrade here so as not to have to wait on
-// apt to finish when performing the second half of image initialisation.
-// Doing it later brings the benefit of feedback in the face of errors,
-// but adds to the running time of initialisation due to lack of activity
-// between image bringup and start of agent installation.
-func ConfigureBasic(cfg *MachineConfig, c *cloudinit.Config) error {
-	c.AddScripts(
-		"set -xe", // ensure we run all the scripts or abort.
-	)
-	c.AddSSHAuthorizedKeys(cfg.AuthorizedKeys)
-	c.SetOutput(cloudinit.OutAll, "| tee -a "+cfg.CloudInitOutputLog, "")
-	// Create a file in a well-defined location containing the machine's
-	// nonce. The presence and contents of this file will be verified
-	// during bootstrap.
-	//
-	// Note: this must be the last runcmd we do in ConfigureBasic, as
-	// the presence of the nonce file is used to gate the remainder
-	// of synchronous bootstrap.
-	// path.Join() used here resulting in wonky nonce filepath
-	noncefile := filepath.Join(cfg.DataDir, NonceFile)
-	c.AddFile(noncefile, cfg.MachineNonce, 0644)
-	return nil
-}
-
 // AddAptCommands update the cloudinit.Config instance with the necessary
 // packages, the request to do the apt-get update/upgrade on boot, and adds
 // the apt proxy settings if there are any.
-func AddAptCommands(proxySettings proxy.Settings, c *cloudinit.Config) {
+func AddAptCommands(
+	proxySettings proxy.Settings,
+	c *cloudinit.Config,
+	addUpdateScripts bool,
+	addUpgradeScripts bool,
+) {
+	// Check preconditions
+	if c == nil {
+		panic("c is nil")
+	}
+
 	// Bring packages up-to-date.
-	c.SetAptUpdate(true)
-	c.SetAptUpgrade(true)
+	c.SetAptUpdate(addUpdateScripts)
+	c.SetAptUpgrade(addUpgradeScripts)
 	c.SetAptGetWrapper("eatmydata")
 
-	c.AddPackage("curl")
-	c.AddPackage("cpu-checker")
-	// TODO(axw) 2014-07-02 #1277359
-	// Don't install bridge-utils in cloud-init;
-	// leave it to the networker worker.
-	c.AddPackage("bridge-utils")
-	c.AddPackage("rsyslog-gnutls")
+	// If we're not doing an update, adding these packages is
+	// meaningless.
+	if addUpdateScripts {
+		c.AddPackage("curl")
+		c.AddPackage("cpu-checker")
+		// TODO(axw) 2014-07-02 #1277359
+		// Don't install bridge-utils in cloud-init;
+		// leave it to the networker worker.
+		c.AddPackage("bridge-utils")
+		c.AddPackage("rsyslog-gnutls")
+	}
 
 	// Write out the apt proxy settings
 	if (proxySettings != proxy.Settings{}) {
@@ -375,7 +354,10 @@ func (cfg *MachineConfig) dataFile(name string) string {
 	return filepath.Join(cfg.DataDir, name)
 }
 
-func (cfg *MachineConfig) agentConfig(tag names.Tag) (agent.ConfigSetter, error) {
+func (cfg *MachineConfig) agentConfig(
+	tag names.Tag,
+	toolsVersion version.Number,
+) (agent.ConfigSetter, error) {
 	// TODO for HAState: the stateHostAddrs and apiHostAddrs here assume that
 	// if the machine is a stateServer then to use localhost.  This may be
 	// sufficient, but needs thought in the new world order.
@@ -390,7 +372,7 @@ func (cfg *MachineConfig) agentConfig(tag names.Tag) (agent.ConfigSetter, error)
 		LogDir:            cfg.LogDir,
 		Jobs:              cfg.Jobs,
 		Tag:               tag,
-		UpgradedToVersion: version.Current.Number,
+		UpgradedToVersion: toolsVersion,
 		Password:          password,
 		Nonce:             cfg.MachineNonce,
 		StateAddresses:    cfg.stateHostAddrs(),
@@ -403,41 +385,6 @@ func (cfg *MachineConfig) agentConfig(tag names.Tag) (agent.ConfigSetter, error)
 		return agent.NewAgentConfig(configParams)
 	}
 	return agent.NewStateMachineConfig(configParams, *cfg.StateServingInfo)
-}
-
-// addAgentInfo adds agent-required information to the agent's directory
-// and returns the agent directory name.
-func (cfg *MachineConfig) addAgentInfo(c *cloudinit.Config, tag names.Tag) (agent.Config, error) {
-	acfg, err := cfg.agentConfig(tag)
-	if err != nil {
-		return nil, err
-	}
-	acfg.SetValue(agent.AgentServiceName, cfg.MachineAgentServiceName)
-	cmds, err := acfg.WriteCommands()
-	if err != nil {
-		return nil, errors.Annotate(err, "failed to write commands")
-	}
-	c.AddScripts(cmds...)
-	return acfg, nil
-}
-
-func (cfg *MachineConfig) addMachineAgentToBoot(c *cloudinit.Config, tag, machineId string) error {
-	// Make the agent run via a symbolic link to the actual tools
-	// directory, so it can upgrade itself without needing to change
-	// the upstart script.
-	toolsDir := agenttools.ToolsDir(cfg.DataDir, tag)
-	// TODO(dfc) ln -nfs, so it doesn't fail if for some reason that the target already exists
-	c.AddScripts(fmt.Sprintf("ln -s %v %s", cfg.Tools.Version, shquote(toolsDir)))
-
-	name := cfg.MachineAgentServiceName
-	conf := upstart.MachineAgentUpstartService(name, toolsDir, cfg.DataDir, cfg.LogDir, tag, machineId, nil)
-	cmds, err := conf.InstallCommands()
-	if err != nil {
-		return errors.Annotatef(err, "cannot make cloud-init upstart script for the %s agent", tag)
-	}
-	c.AddRunCmd(cloudinit.LogProgressCmd("Starting Juju machine agent (%s)", name))
-	c.AddScripts(cmds...)
-	return nil
 }
 
 // versionDir converts a tools URL into a name
@@ -633,9 +580,6 @@ func verifyConfig(cfg *MachineConfig) (err error) {
 		}
 		if cfg.StateServingInfo.APIPort == 0 {
 			return fmt.Errorf("missing API port")
-		}
-		if cfg.SystemPrivateSSHKey == "" {
-			return fmt.Errorf("missing system ssh identity")
 		}
 		if cfg.InstanceId == "" {
 			return fmt.Errorf("missing instance-id")

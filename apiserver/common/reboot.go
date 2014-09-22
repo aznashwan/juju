@@ -82,7 +82,7 @@ func (r *RebootActionGetter) getOneAction(tag names.Tag) (params.RebootAction, e
 	if err != nil {
 		return params.ShouldDoNothing, err
 	}
-	return rAction, nil
+	return params.RebootAction(rAction), nil
 }
 
 func (r *RebootActionGetter) GetRebootAction(args params.Entities) (params.RebootActionResults, error) {

@@ -20,6 +20,9 @@ var logger = loggo.GetLogger("juju.apiserver.reboot")
 // RebootAPI provides access to the Upgrader API facade.
 type RebootAPI struct {
 	*common.RebootActionGetter
+	// The ability for a machine to reboot itself is not yet used.
+	// It will be used for situations like container support in Windows
+	// Where installing the hyper-v role will require a reboot.
 	*common.RebootRequester
 	*common.RebootFlagClearer
 

@@ -827,12 +827,12 @@ type FindToolsResult struct {
 
 // RebootActionResults holds a list of RebootActionResult and any error.
 type RebootActionResults struct {
-	Results []RebootActionResult
+	Results []RebootActionResult `json:results,omitempty`
 }
 
 // RebootActionResult holds the result of a single call to
 // machine.ShouldRebootOrShutdown.
 type RebootActionResult struct {
-	Result RebootAction
+	Result RebootAction `json:result,omitempty`
 	Error  *Error
 }

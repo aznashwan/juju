@@ -41,6 +41,34 @@ func (s *unitSuite) TearDownTest(c *gc.C) {
 	s.uniterSuite.TearDownTest(c)
 }
 
+func (s *unitSuite) TestRequestReboot(c *gc.C) {
+	uniter.PatchFacadeCall(s, s.uniter, func(facade string, p interface{}, resp interface{}) error {
+		if facade == "AssignedMachine" {
+			if resp, ok := resp.(*params.StringResult); ok {
+				resp.Result = s.wordpressMachine.Tag().String()
+			}
+			return nil
+		}
+
+		if entities, ok := p.(params.Entities); ok {
+			if len(entities.Entities) != 1 {
+				return errors.Errorf("Expected 1 machine, got: %d", len(entities.Entities))
+			}
+			if entities.Entities[0].Tag != s.wordpressMachine.Tag().String() {
+				return errors.Errorf("Expecting machine tag %s, got %s", s.wordpressMachine.Tag().String(), entities.Entities[0].Tag)
+			}
+		}
+		if resp, ok := resp.(*params.ErrorResults); ok {
+			resp.Results = []params.ErrorResult{
+				{},
+			}
+		}
+		return nil
+	})
+	err := s.apiUnit.RequestReboot()
+	c.Assert(err, gc.IsNil)
+}
+
 func (s *unitSuite) TestUnitAndUnitTag(c *gc.C) {
 	apiUnitFoo, err := s.uniter.Unit(names.NewUnitTag("foo/42"))
 	c.Assert(err, gc.ErrorMatches, "permission denied")

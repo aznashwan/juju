@@ -12,9 +12,9 @@ import (
 	stdtesting "testing"
 	"time"
 
+	"github.com/juju/charm"
 	"github.com/juju/utils/set"
 	gc "gopkg.in/check.v1"
-	"gopkg.in/juju/charm.v4"
 
 	"github.com/juju/juju/apiserver/params"
 	"github.com/juju/juju/state"
@@ -88,6 +88,7 @@ type Context struct {
 	rels          map[int]*ContextRelation
 	metrics       []jujuc.Metric
 	canAddMetrics bool
+	rebootPrio    jujuc.RebootPriority
 }
 
 func (c *Context) AddMetrics(key, value string, created time.Time) error {
@@ -157,6 +158,11 @@ func (c *Context) RelationIds() []int {
 
 func (c *Context) OwnerTag() string {
 	return "test-owner"
+}
+
+func (c *Context) RequestReboot(prio jujuc.RebootPriority) error {
+	c.rebootPrio = prio
+	return nil
 }
 
 type ContextRelation struct {

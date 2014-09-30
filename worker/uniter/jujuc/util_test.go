@@ -89,6 +89,7 @@ type Context struct {
 	metrics       []jujuc.Metric
 	canAddMetrics bool
 	rebootPrio    jujuc.RebootPriority
+	giveError	  bool
 }
 
 func (c *Context) AddMetrics(key, value string, created time.Time) error {
@@ -162,7 +163,13 @@ func (c *Context) OwnerTag() string {
 
 func (c *Context) RequestReboot(prio jujuc.RebootPriority) error {
 	c.rebootPrio = prio
-	return nil
+	var res bool
+	if c.giveError {
+		res = fmt.Errorf("RequestReboot error'd!")
+	} else {
+		res = nil
+	}
+	return res
 }
 
 type ContextRelation struct {

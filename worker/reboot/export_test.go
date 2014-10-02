@@ -10,6 +10,6 @@ func (r *Reboot) CheckForRebootState() error {
 	return r.checkForRebootState()
 }
 
-func NewRebootStruct(st *reboot.State) *Reboot {
+func NewRebootStruct(st *reboot.State) Reboot {
 	return Reboot{st: st}
 }

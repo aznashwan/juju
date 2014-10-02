@@ -8,19 +8,15 @@ import (
 	"fmt"
 	stdtesting "testing"
 
-	"github.com/juju/names"
-	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
-	facadetesting "github.com/juju/juju/api/base/testing"
 	apireboot "github.com/juju/juju/api/reboot"
 	"github.com/juju/juju/apiserver/params"
 	jujutesting "github.com/juju/juju/juju/testing"
 //	coretesting "github.com/juju/juju/testing"
 	"github.com/juju/juju/utils/rebootstate"
 	"github.com/juju/juju/state"
-	"github.com/juju/juju/version"
 	"github.com/juju/juju/worker"
 	"github.com/juju/juju/worker/reboot"
 )
@@ -71,7 +67,7 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	// test immediate return when no state files are found
-	err := rebootWorker.CheckForRebootState()
+	err = rebootWorker.CheckForRebootState()
 	c.Assert(err, gc.IsNil)
 
 	// test that an error in a GetRebootAction call triggers abort 

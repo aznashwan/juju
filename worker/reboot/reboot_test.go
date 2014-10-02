@@ -107,10 +107,10 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 				if resp, ok := resp.(*params.RebootActionResults); ok {
 					resp.Results = []params.RebootActionResult {
 						{ Result: params.ShouldReboot },
-					}
+					}	
 				}
 			} else {
-				if resp, ok := resp.(*params.ErrorResults); ok
+				if resp, ok := resp.(*params.ErrorResults); ok {
 					resp.Results = []params.ErrorResults {
 						{ Error: fmt.Errorf("ClearReboot call error!") },
 					}
@@ -134,7 +134,7 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 					}
 				}
 			} else {
-				if resp, ok := resp.(*params.ErrorResults); ok
+				if resp, ok := resp.(*params.ErrorResults); ok {
 					resp.Results = []params.ErrorResults {
 						{ Error: nil },
 					}

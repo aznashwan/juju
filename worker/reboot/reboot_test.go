@@ -35,7 +35,7 @@ type RebootSuite struct {
 
 	stateMachine	*state.Machine
 	apiState		*api.State
-	rebootState		*apireboot.State	
+	rebootState		*apireboot.State
 }
 
 var _ = gc.Suite(&RebootSuite{})
@@ -159,7 +159,7 @@ func (s *RebootSuite) TestHandleShouldDoNothing(c *gc.C) {
 				}
 			}
 			return nil
-		})	
+		})
 
 	err := rebootWorker.Handle()
 	c.Assert(err, gc.IsNil)
@@ -175,7 +175,7 @@ func (s *RebootSuite) TestHandleShouldShutdown(c *gc.C) {
 				}
 			}
 			return nil
-		})	
+		})
 
 	err := rebootWorker.Handle()
 	c.Assert(err, gc.Equals, worker.ErrShutdownMachine)
@@ -191,7 +191,7 @@ func (s *RebootSuite) TestHandleShouldReboot(c *gc.C) {
 				}
 			}
 			return nil
-		})	
+		})
 
 	err := rebootWorker.Handle()
 	c.Assert(err, gc.Equals, worker.ErrRebootMachine)

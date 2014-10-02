@@ -78,7 +78,7 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 	// while leaving the state file intact
 	err = rebootstate.New()
 	c.Assert(err, gc.IsNil)
-	apireboot.PatchFacadeCall(s, s.rebootState, func(string, interface{}, interface{}) error {
+	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			return fmt.Errorf("GetRebootAction call error!")
 		})
 
@@ -91,7 +91,7 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 	// flag and that reboot state file is properly cleared afterwards
 	err = rebootstate.New()
 	c.Assert(err, gc.IsNil)
-	apireboot.PatchFacadeCall(s, s.rebootState, func(string, interface{}, resp interface{}) error {
+	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			if resp, ok := resp.(*params.RebootActionResults); ok {
 				resp.Results = []params.RebootActionResult {
 					{ Result: params.ShouldDoNothing },
@@ -108,7 +108,7 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 	// and that state file is left intact
 	err = rebootstate.New()
 	c.Assert(err, gc.IsNil)
-	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, interface{}, resp interface{}) error {
+	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			if resp, ok := resp.(*params.RebootActionResults); ok {
 				if name == "GetRebootAction" {
 					resp.Results = []params.RebootActionResult {
@@ -127,7 +127,7 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 
 	// test for succesful calls of GetRebootAction and ClearReboot
 	// assuring that the state files were cleared
-	apireboot.PatchFacadeCall(s, s.rebootState, func(string, interface{}, resp interface{}) error {
+	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			if resp, ok := resp.(*params.RebootActionResults); ok {
 				resp.Results = []params.RebootActionResult {
 					{ Result: params.ShouldReboot },
@@ -145,7 +145,7 @@ func (s *RebootSuite)TestHandleFacadeCallError(c *gc.C) {
 	rebootWorker, err := reboot.NewRebootStruct(s.rebootState)
 	c.Assert(err, gc.IsNil)
 
-	apireboot.PatchFacadeCall(s, s.rebootState, func(string, interface{}, interface{}) error {
+	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			return fmt.Errorf("GetRebootAction call error!")
 		})
 
@@ -157,7 +157,7 @@ func (s *RebootSuite) TestHandleShouldDoNothing(c *gc.C) {
 	rebootWorker, err := reboot.NewRebootStruct(s.rebootState)
 	c.Assert(err, gc.IsNil)
 
-	apireboot.PatchFacadeCall(s, s.rebootState, func(string, interface{}, resp interface{}) error {
+	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			if resp, ok := resp.(*params.RebootActionResults); ok {
 				resp.Results = []params.RebootActionResult {
 					{ Result: params.ShouldDoNothing },
@@ -174,7 +174,7 @@ func (s *RebootSuite) TestHandleShouldShutdown(c *gc.C) {
 	rebootWorker, err := reboot.NewRebootStruct(s.rebootState)
 	c.Assert(err, gc.IsNil)
 
-	apireboot.PatchFacadeCall(s, s.rebootState, func(string, interface{}, resp interface{}) error {
+	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			if resp, ok := resp.(*params.RebootActionResults); ok {
 				resp.Results = []params.RebootActionResult {
 					{ Result: params.ShouldShutdown },
@@ -191,7 +191,7 @@ func (s *RebootSuite) TestHandleShouldReboot(c *gc.C) {
 	rebootWorker, err := reboot.NewRebootStruct(s.rebootState)
 	c.Assert(err, gc.IsNil)
 
-	apireboot.PatchFacadeCall(s, s.rebootState, func(string, interface{}, resp interface{}) error {
+	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			if resp, ok := resp.(*params.RebootActionResults); ok {
 				resp.Results = []params.RebootActionResult {
 					{ Result: params.ShouldReboot },

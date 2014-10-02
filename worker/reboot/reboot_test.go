@@ -110,6 +110,9 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 					}
 					res = nil
 				} else {
+					resp.Results = []params.RebootActionResult {
+						{ Result: params.ShouldDoNothing },
+					}
 					res = fmt.Errorf("ClearReboot call error!")
 				}
 			}

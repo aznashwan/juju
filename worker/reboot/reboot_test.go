@@ -103,20 +103,20 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			var res error
-			if resp, ok := resp.(*params.RebootActionResults); ok {
-				if name == "GetRebootAction" {
+			if name == "GetRebootAction" {
+				if resp, ok := resp.(*params.RebootActionResults); ok {
 					resp.Results = []params.RebootActionResult {
 						{ Result: params.ShouldReboot },
 					}
-					res = nil
-				} else {
-					resp.Results = []params.RebootActionResult {
-						{ Result: params.ShouldDoNothing },
+				}
+			} else {
+				if resp, ok := resp.(*params.ErrorResults); ok
+					resp.Results = []params.ErrorResults {
+						{ Error: fmt.Errorf("ClearReboot call error!") },
 					}
-					res = fmt.Errorf("ClearReboot call error!")
 				}
 			}
-			return res
+			return nil
 		})
 
 	err = rebootWorker.CheckForRebootState()
@@ -126,9 +126,18 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 	// test for succesful calls of GetRebootAction and ClearReboot
 	// assuring that the state files were cleared
 	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
-			if resp, ok := resp.(*params.RebootActionResults); ok {
-				resp.Results = []params.RebootActionResult {
-					{ Result: params.ShouldReboot },
+			var res error
+			if name == "GetRebootAction" {
+				if resp, ok := resp.(*params.RebootActionResults); ok {
+					resp.Results = []params.RebootActionResult {
+						{ Result: params.ShouldReboot },
+					}
+				}
+			} else {
+				if resp, ok := resp.(*params.ErrorResults); ok
+					resp.Results = []params.ErrorResults {
+						{ Error: nil },
+					}
 				}
 			}
 			return nil

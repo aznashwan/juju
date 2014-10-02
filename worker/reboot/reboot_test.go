@@ -43,6 +43,8 @@ func (s *RebootSuite) SetUpSuite(c *gc.C) {
 
 func (s *RebootSuite) SetUpTest(c *gc.C) {
 	var err error
+	s.PatchValue(&rebootstate.RebootStateFile, 
+		filepath.Join(c.MkDir(), "reboot-state.txt"))
 
 	s.JujuConnSuite.SetUpTest(c)
 	s.apiState, s.stateMachine = s.OpenAPIAsNewMachine(c)

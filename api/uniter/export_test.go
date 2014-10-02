@@ -26,3 +26,11 @@ func PatchUnitResponse(p testing.Patcher, u *Unit, expectedRequest string, respo
 		return responseFunc(response)
 	})
 }
+
+// PatchFacadeCall patches the State's facade such that
+// FacadeCall method calls are diverted to the provided
+// function. We can use this function when we need to check
+// that the tested function sends expected information
+func PatchFacadeCall(p testing.Patcher, st *State, f func(request string, params, response interface{}) error) {
+	testing.PatchFacadeCall(p, &st.facade, f)
+}

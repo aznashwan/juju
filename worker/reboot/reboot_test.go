@@ -65,7 +65,6 @@ func (s *RebootSuite) TearDownSuite(c *gc.C) {
 
 func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 	rebootWorker := reboot.NewRebootStruct(s.rebootState)
-	c.Assert(err, gc.IsNil)
 
 	// test immediate return when no state files are found
 	err := rebootWorker.CheckForRebootState()
@@ -140,7 +139,6 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 
 func (s *RebootSuite)TestHandleFacadeCallError(c *gc.C) {
 	rebootWorker := reboot.NewRebootStruct(s.rebootState)
-	c.Assert(err, gc.IsNil)
 
 	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			return fmt.Errorf("GetRebootAction call error!")
@@ -152,7 +150,6 @@ func (s *RebootSuite)TestHandleFacadeCallError(c *gc.C) {
 
 func (s *RebootSuite) TestHandleShouldDoNothing(c *gc.C) {
 	rebootWorker := reboot.NewRebootStruct(s.rebootState)
-	c.Assert(err, gc.IsNil)
 
 	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			if resp, ok := resp.(*params.RebootActionResults); ok {
@@ -169,7 +166,6 @@ func (s *RebootSuite) TestHandleShouldDoNothing(c *gc.C) {
 
 func (s *RebootSuite) TestHandleShouldShutdown(c *gc.C) {
 	rebootWorker := reboot.NewRebootStruct(s.rebootState)
-	c.Assert(err, gc.IsNil)
 
 	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			if resp, ok := resp.(*params.RebootActionResults); ok {
@@ -186,7 +182,6 @@ func (s *RebootSuite) TestHandleShouldShutdown(c *gc.C) {
 
 func (s *RebootSuite) TestHandleShouldReboot(c *gc.C) {
 	rebootWorker := reboot.NewRebootStruct(s.rebootState)
-	c.Assert(err, gc.IsNil)
 
 	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			if resp, ok := resp.(*params.RebootActionResults); ok {

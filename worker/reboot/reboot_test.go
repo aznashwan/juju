@@ -64,11 +64,11 @@ func (s *RebootSuite) TearDownSuite(c *gc.C) {
 
 
 func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
-	rebootWorker, err := reboot.NewRebootStruct(s.rebootState)
+	rebootWorker := reboot.NewRebootStruct(s.rebootState)
 	c.Assert(err, gc.IsNil)
 
 	// test immediate return when no state files are found
-	err = rebootWorker.CheckForRebootState()
+	err := rebootWorker.CheckForRebootState()
 	c.Assert(err, gc.IsNil)
 
 	// test that an error in a GetRebootAction call triggers abort 
@@ -98,7 +98,7 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 		})
 
 	err = rebootWorker.CheckForRebootState()
-	c.Assert(err, gc,IsNil)
+	c.Assert(err, gc.IsNil)
 	c.Assert(rebootstate.IsPresent(), jc.IsFalse)
 
 	// test for succesful call of GetRebootAction call but failed ClearReboot
@@ -139,19 +139,19 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 }
 
 func (s *RebootSuite)TestHandleFacadeCallError(c *gc.C) {
-	rebootWorker, err := reboot.NewRebootStruct(s.rebootState)
+	rebootWorker := reboot.NewRebootStruct(s.rebootState)
 	c.Assert(err, gc.IsNil)
 
 	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			return fmt.Errorf("GetRebootAction call error!")
 		})
 
-	err = rebootWorker.Handle()
+	err := rebootWorker.Handle()
 	c.Assert(err, gc.ErrorMatches, "GetRebootAction call error!")
 }
 
 func (s *RebootSuite) TestHandleShouldDoNothing(c *gc.C) {
-	rebootWorker, err := reboot.NewRebootStruct(s.rebootState)
+	rebootWorker := reboot.NewRebootStruct(s.rebootState)
 	c.Assert(err, gc.IsNil)
 
 	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
@@ -163,12 +163,12 @@ func (s *RebootSuite) TestHandleShouldDoNothing(c *gc.C) {
 			return nil
 		})	
 
-	err = rebootWorker.Handle()
+	err := rebootWorker.Handle()
 	c.Assert(err, gc.IsNil)
 }
 
 func (s *RebootSuite) TestHandleShouldShutdown(c *gc.C) {
-	rebootWorker, err := reboot.NewRebootStruct(s.rebootState)
+	rebootWorker := reboot.NewRebootStruct(s.rebootState)
 	c.Assert(err, gc.IsNil)
 
 	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
@@ -180,12 +180,12 @@ func (s *RebootSuite) TestHandleShouldShutdown(c *gc.C) {
 			return nil
 		})	
 
-	err = rebootWorker.Handle()
+	err := rebootWorker.Handle()
 	c.Assert(err, gc.Equals, worker.ErrShutdownMachine)
 }
 
 func (s *RebootSuite) TestHandleShouldReboot(c *gc.C) {
-	rebootWorker, err := reboot.NewRebootStruct(s.rebootState)
+	rebootWorker := reboot.NewRebootStruct(s.rebootState)
 	c.Assert(err, gc.IsNil)
 
 	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
@@ -197,6 +197,6 @@ func (s *RebootSuite) TestHandleShouldReboot(c *gc.C) {
 			return nil
 		})	
 
-	err = rebootWorker.Handle()
+	err := rebootWorker.Handle()
 	c.Assert(err, gc.Equals, worker.ErrRebootMachine)
 }

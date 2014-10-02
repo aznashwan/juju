@@ -1,13 +1,10 @@
 package reboot
 
 import (
-	"os"
-
 	"github.com/juju/errors"
 	"github.com/juju/loggo"
 	"github.com/juju/names"
 	"github.com/juju/utils/fslock"
-	"github.com/juju/utils/uptime"
 	"launchpad.net/tomb"
 
 	"github.com/juju/juju/agent"
@@ -28,9 +25,10 @@ const RebootMessage = "preparing for reboot"
 var _ worker.NotifyWatchHandler = (*Reboot)(nil)
 
 // The reboot worker listens for changes to the reboot flag and
-// exists with worker.ErrRebootMachine if the machine should shutdown
-// or reboot. This will be picked up by the machine agent as a fatal error
-// and will do the right thing (reboot or shutdown)
+// exists with worker.ErrRebootMachine if the machine should reboot or
+// with worker.ErrShutdownMachine if it should shutdoen. This will be picked
+// up by the machine agent as a fatal error and will do the
+// right thing (reboot or shutdown)
 type Reboot struct {
 	tomb tomb.Tomb
 	st   *reboot.State
@@ -66,35 +64,20 @@ func (r *Reboot) breakHookLock() error {
 }
 
 func (r *Reboot) checkForRebootState() error {
-	utime, err := rebootstate.Read()
-	if err != nil {
-		if _, ok := err.(*os.PathError); ok {
-			// No RebootStateFile was found.
-			return nil
-		}
-		return err
+	if !rebootstate.IsPresent() {
+		return nil
 	}
 
-	currentUptime, err := uptime.Uptime()
+	// Check if reboot flag is set.
+	rAction, err := r.st.GetRebootAction()
 	if err != nil {
 		return err
 	}
-	if utime < currentUptime {
-		// Uptime in the state file is lower then current uptime.
-		// This is normal if we set the file, but have not yet managed to do a reboot
-		// At this point however, the reboot flag in the state machine
-		// should be set if we still have to reboot.
-		rAction, err := r.st.GetRebootAction()
-		if err != nil {
-			return err
-		}
-		if rAction == params.ShouldDoNothing {
-			logger.Infof("Clearing stale reboot state file")
-			err = rebootstate.Remove()
-			return err
-		}
-		// We still have to reboot.
-		return nil
+	if rAction == params.ShouldDoNothing {
+		// Reboot flag is clear.
+		logger.Infof("Clearing stale reboot state file")
+		err = rebootstate.Remove()
+		return err
 	}
 
 	// Clear reboot flag

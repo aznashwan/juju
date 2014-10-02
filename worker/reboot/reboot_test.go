@@ -112,7 +112,7 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 			} else {
 				if resp, ok := resp.(*params.ErrorResults); ok {
 					resp.Results = []params.ErrorResult {
-						{ Error: "ClearReboot call error!" },
+						{ Error: &params.Error{ "ClearReboot call error!" } },
 					}
 				}
 			}

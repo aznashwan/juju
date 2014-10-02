@@ -15,19 +15,15 @@ import (
 	apireboot "github.com/juju/juju/api/reboot"
 	"github.com/juju/juju/apiserver/params"
 	jujutesting "github.com/juju/juju/juju/testing"
-//	coretesting "github.com/juju/juju/testing"
+	coretesting "github.com/juju/juju/testing"
 	"github.com/juju/juju/utils/rebootstate"
 	"github.com/juju/juju/state"
 	"github.com/juju/juju/worker"
 	"github.com/juju/juju/worker/reboot"
 )
 
-// func TestAll(t *stdtesting.T) {
-// 	coretesting.MgoTestPackage(t)
-// }
-
 func TestAll(t *stdtesting.T) {
-	gc.TestingT(t)
+	coretesting.MgoTestPackage(t)
 }
 
 type RebootSuite struct {

@@ -114,6 +114,7 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 				} else {
 					return fmt.Errorf("ClearReboot call error!")
 				}
+			return nil
 			}
 		})
 

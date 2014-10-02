@@ -6,6 +6,7 @@ package reboot_test
 
 import (
 	"fmt"
+	"path/filepath"
 	stdtesting "testing"
 
 	jc "github.com/juju/testing/checkers"
@@ -81,8 +82,6 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 
 	// test for succesful GetRebootAction call with returned ShouldDoNothing
 	// flag and that reboot state file is properly cleared afterwards
-	err = rebootstate.New()
-	c.Assert(err, gc.IsNil)
 	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
 			if resp, ok := resp.(*params.RebootActionResults); ok {
 				resp.Results = []params.RebootActionResult {
@@ -101,17 +100,18 @@ func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
 	err = rebootstate.New()
 	c.Assert(err, gc.IsNil)
 	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
+			var res error
 			if resp, ok := resp.(*params.RebootActionResults); ok {
 				if name == "GetRebootAction" {
 					resp.Results = []params.RebootActionResult {
 						{ Result: params.ShouldReboot },
 					}
-					return nil
+					res = nil
 				} else {
-					return fmt.Errorf("ClearReboot call error!")
+					res = fmt.Errorf("ClearReboot call error!")
 				}
 			}
-			return nil
+			return res
 		})
 
 	err = rebootWorker.CheckForRebootState()

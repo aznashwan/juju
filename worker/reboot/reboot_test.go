@@ -5,21 +5,19 @@
 package reboot_test
 
 import (
-	"fmt"
-	"path/filepath"
 	stdtesting "testing"
 	"time"
 
-	jc "github.com/juju/testing/checkers"
+	"github.com/juju/names"
+	// jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/agent"
 	"github.com/juju/juju/api"
 	apireboot "github.com/juju/juju/api/reboot"
-	"github.com/juju/juju/apiserver/params"
 	jujutesting "github.com/juju/juju/juju/testing"
 	coretesting "github.com/juju/juju/testing"
-	"github.com/juju/juju/utils/rebootstate"
+	//  "github.com/juju/juju/utils/rebootstate"
 	"github.com/juju/juju/state"
 	"github.com/juju/juju/worker"
 	"github.com/juju/juju/worker/reboot"
@@ -32,7 +30,7 @@ func TestPackage(t *stdtesting.T) {
 }
 
 type RebootSuite struct {
-	testing.JujuConnSuite
+	jujutesting.JujuConnSuite
 
 	stateMachine	*state.Machine
 	apiState		*api.State
@@ -70,21 +68,24 @@ type mockAgentConfig struct {
 	tag names.Tag
 }
 
-func (cfg *mockConfig) Tag() names.Tag {
+func (cfg *mockAgentConfig) Tag() names.Tag {
 	return cfg.tag
 }
 
-func mockAgentConfig(tag names.Tag) {
-	return &mockConfig{tag: tag}
+func agentConfig(tag names.Tag) agent.Config {
+	return &mockAgentConfig{tag: tag}
 }
 
-func (s *RebootSuite) newRebootWorker() worker.Worker {
-	return reboot.NewReboot(s.rebootState,
-		mockAgentConfig(s.stateMachine.Tag().(names.MachineTag)))
+func (s *RebootSuite) newRebootWorker(c *gc.C) worker.Worker {
+	rebooter, err := reboot.NewReboot(s.rebootState,
+		agentConfig(s.stateMachine.Tag().(names.MachineTag)))
+	c.Assert(err, gc.IsNil)
+
+	return rebooter
 }
 
 func (s *RebootSuite) TestStop(c *gc.C) {
 	rebooter := s.newRebootWorker()
 
-	c.Assert(worker.Stop(rebooter), gc.IsNil())
+	c.Assert(worker.Stop(rebooter), gc.IsNil)
 }

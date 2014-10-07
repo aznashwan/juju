@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"path/filepath"
 	stdtesting "testing"
+	"time"
 
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
+	"github.com/juju/juju/agent"
 	"github.com/juju/juju/api"
 	apireboot "github.com/juju/juju/api/reboot"
 	"github.com/juju/juju/apiserver/params"
@@ -23,12 +25,14 @@ import (
 	"github.com/juju/juju/worker/reboot"
 )
 
-func TestAll(t *stdtesting.T) {
+const worstCase = 5 * time.Second
+
+func TestPackage(t *stdtesting.T) {
 	coretesting.MgoTestPackage(t)
 }
 
 type RebootSuite struct {
-	jujutesting.JujuConnSuite
+	testing.JujuConnSuite
 
 	stateMachine	*state.Machine
 	apiState		*api.State
@@ -42,14 +46,14 @@ func (s *RebootSuite) SetUpSuite(c *gc.C) {
 }
 
 func (s *RebootSuite) SetUpTest(c *gc.C) {
-	var err error
-	s.PatchValue(&rebootstate.RebootStateFile, 
-		filepath.Join(c.MkDir(), "reboot-state.txt"))
+	s.PatchValue(&reboot.LockDir, c.MkDir())
+	s.PatchValue(&agent.DefaultDataDir, c.MkDir())
 
 	s.JujuConnSuite.SetUpTest(c)
 	s.apiState, s.stateMachine = s.OpenAPIAsNewMachine(c)
+
+	var err error
 	s.rebootState, err = s.apiState.Reboot()
-	c.Assert(s.rebootState, gc.NotNil)
 	c.Assert(err, gc.IsNil)
 }
 
@@ -61,148 +65,26 @@ func (s *RebootSuite) TearDownSuite(c *gc.C) {
 	s.JujuConnSuite.TearDownSuite(c)
 }
 
-
-func (s *RebootSuite) TestCheckForRebootState(c *gc.C) {
-	rebootWorker := reboot.NewRebootStruct(s.rebootState)
-
-	// test immediate return when no state files are found
-	err := rebootWorker.CheckForRebootState()
-	c.Assert(err, gc.IsNil)
-
-	// test that an error in a GetRebootAction call triggers abort 
-	// while leaving the state file intact
-	err = rebootstate.New()
-	c.Assert(err, gc.IsNil)
-	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
-			return fmt.Errorf("GetRebootAction call error!")
-		})
-
-	err = rebootWorker.CheckForRebootState()
-	c.Assert(err, gc.ErrorMatches, "GetRebootAction call error!")
-	c.Assert(rebootstate.IsPresent(), jc.IsTrue)
-
-
-	// test for succesful GetRebootAction call with returned ShouldDoNothing
-	// flag and that reboot state file is properly cleared afterwards
-	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
-			if resp, ok := resp.(*params.RebootActionResults); ok {
-				resp.Results = []params.RebootActionResult {
-					{ Result: params.ShouldDoNothing },
-				}
-			}
-			return nil
-		})
-
-	err = rebootWorker.CheckForRebootState()
-	c.Assert(err, gc.IsNil)
-	c.Assert(rebootstate.IsPresent(), jc.IsFalse)
-
-	// test for succesful call of GetRebootAction call but failed ClearReboot
-	// and that state file is left intact
-	err = rebootstate.New()
-	c.Assert(err, gc.IsNil)
-	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
-			var res error
-			if name == "GetRebootAction" {
-				if resp, ok := resp.(*params.RebootActionResults); ok {
-					resp.Results = []params.RebootActionResult {
-						{ Result: params.ShouldReboot },
-					}	
-				}
-			} else {
-				if resp, ok := resp.(*params.ErrorResults); ok {
-					resp.Results = []params.ErrorResult {
-						{ Error: &params.Error{ "ClearReboot call error!" } },
-					}
-				}
-			}
-			return nil
-		})
-
-	err = rebootWorker.CheckForRebootState()
-	c.Assert(err, gc.ErrorMatches, "ClearReboot call error!")
-	c.Assert(rebootstate.IsPresent(), jc.IsTrue)
-
-	// test for succesful calls of GetRebootAction and ClearReboot
-	// assuring that the state files were cleared
-	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
-			var res error
-			if name == "GetRebootAction" {
-				if resp, ok := resp.(*params.RebootActionResults); ok {
-					resp.Results = []params.RebootActionResult {
-						{ Result: params.ShouldReboot },
-					}
-				}
-			} else {
-				if resp, ok := resp.(*params.ErrorResults); ok {
-					resp.Results = []params.ErrorResult {
-						{ Error: nil },
-					}
-				}
-			}
-			return nil
-		})
-
-	err = rebootWorker.CheckForRebootState()
-	c.Assert(err, gc.IsNil)
-	c.Assert(rebootstate.IsPresent(), jc.IsFalse)
+type mockAgentConfig struct {
+	agent.Config
+	tag names.Tag
 }
 
-func (s *RebootSuite)TestHandleFacadeCallError(c *gc.C) {
-	rebootWorker := reboot.NewRebootStruct(s.rebootState)
-
-	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
-			return fmt.Errorf("GetRebootAction call error!")
-		})
-
-	err := rebootWorker.Handle()
-	c.Assert(err, gc.ErrorMatches, "GetRebootAction call error!")
+func (cfg *mockConfig) Tag() names.Tag {
+	return cfg.tag
 }
 
-func (s *RebootSuite) TestHandleShouldDoNothing(c *gc.C) {
-	rebootWorker := reboot.NewRebootStruct(s.rebootState)
-
-	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
-			if resp, ok := resp.(*params.RebootActionResults); ok {
-				resp.Results = []params.RebootActionResult {
-					{ Result: params.ShouldDoNothing },
-				}
-			}
-			return nil
-		})
-
-	err := rebootWorker.Handle()
-	c.Assert(err, gc.IsNil)
+func mockAgentConfig(tag names.Tag) {
+	return &mockConfig{tag: tag}
 }
 
-func (s *RebootSuite) TestHandleShouldShutdown(c *gc.C) {
-	rebootWorker := reboot.NewRebootStruct(s.rebootState)
-
-	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
-			if resp, ok := resp.(*params.RebootActionResults); ok {
-				resp.Results = []params.RebootActionResult {
-					{ Result: params.ShouldShutdown },
-				}
-			}
-			return nil
-		})
-
-	err := rebootWorker.Handle()
-	c.Assert(err, gc.Equals, worker.ErrShutdownMachine)
+func (s *RebootSuite) newRebootWorker() worker.Worker {
+	return reboot.NewReboot(s.rebootState,
+		mockAgentConfig(s.stateMachine.Tag().(names.MachineTag)))
 }
 
-func (s *RebootSuite) TestHandleShouldReboot(c *gc.C) {
-	rebootWorker := reboot.NewRebootStruct(s.rebootState)
+func (s *RebootSuite) TestStop(c *gc.C) {
+	rebooter := s.newRebootWorker()
 
-	apireboot.PatchFacadeCall(s, s.rebootState, func(name string, p, resp interface{}) error {
-			if resp, ok := resp.(*params.RebootActionResults); ok {
-				resp.Results = []params.RebootActionResult {
-					{ Result: params.ShouldReboot },
-				}
-			}
-			return nil
-		})
-
-	err := rebootWorker.Handle()
-	c.Assert(err, gc.Equals, worker.ErrRebootMachine)
+	c.Assert(worker.Stop(rebooter), gc.IsNil())
 }

@@ -1,3 +1,7 @@
+// Copyright 2014 Canonical Ltd.
+// Copyright 2014 Cloudbase Solutions SRL
+// Licensed under the AGPLv3, see LICENCE file for details.
+
 package service
 
 import (
@@ -9,13 +13,11 @@ import (
 	"github.com/juju/utils/exec"
 
 	"github.com/juju/juju/service/common"
+	"github.com/juju/juju/service/systemd"
 	"github.com/juju/juju/service/upstart"
 	"github.com/juju/juju/service/windows"
 	"github.com/juju/juju/version"
 )
-
-var _ Service = (*upstart.Service)(nil)
-var _ Service = (*windows.Service)(nil)
 
 // Service represents a service running on the current system
 type Service interface {
@@ -47,9 +49,12 @@ type Service interface {
 // for the current system
 func NewService(name string, conf common.Conf) Service {
 	switch version.Current.OS {
+	case version.Ubuntu:
+		return upstart.NewService(name, conf)
+	case version.CentOS:
+		return systemd.NewService(name, conf)
 	case version.Windows:
-		svc := windows.NewService(name, conf)
-		return svc
+		return windows.NewService(name, conf)
 	default:
 		return upstart.NewService(name, conf)
 	}
@@ -85,14 +90,42 @@ func upstartListServices(initDir string) ([]string, error) {
 	return services, nil
 }
 
+func systemdListServices() ([]string, error) {
+	cmd := exec.RunParams{
+		Commands: "systemctl list-unit-files --all --type=service --no-legend --no-pager",
+	}
+
+	out, err := exec.RunCommands(cmd)
+	if err != nil {
+		return nil, err
+	}
+	if out.Code != 0 {
+		return nil, fmt.Errorf("Error running %s: %s", cmd.Commands, out.Stderr)
+	}
+
+	// unfortunately, there is no complete --quiet option to systemctl that
+	// outputs the names of the installed service files without their status
+	// alongside them, so we must resort to more unelegant means:
+	items := strings.Fields(string(out.Stdout))
+	var services []string
+	for i, item := range items {
+		if i%2 == 0 {
+			services = append(services, item)
+		}
+	}
+	return services, nil
+}
+
 // ListServices lists all installed services on the running system
 func ListServices(initDir string) ([]string, error) {
 	switch version.Current.OS {
 	case version.Ubuntu:
 		return upstartListServices(initDir)
+	case version.CentOS:
+		return systemdListServices()
 	case version.Windows:
 		return windowsListServices()
 	default:
-		return upstartListServices(initDir)
+		return nil, fmt.Errorf("unrecognized OS version, cannot list services")
 	}
 }

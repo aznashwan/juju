@@ -5,14 +5,21 @@
 package systemd
 
 var RunCommand = &runCommand
+var List = &list
+var Reload = &reload
+var Enable = &enable
+var Disable = &disable
+var Start = &start
+var Stop = &stop
+
 var ExtraScriptTemplate = extraScriptTemplate
 
 func (s *Service) ServiceName() string {
 	return s.serviceName()
 }
 
-func (s *Service) ServicePath() string {
-	return s.servicePath()
+func (s *Service) ServiceFilePath() string {
+	return s.serviceFilePath()
 }
 
 func (s *Service) ExtraScriptPath() string {

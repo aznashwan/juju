@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"text/template"
 
+	"github.com/coreos/go-systemd/unit"
 	"github.com/juju/errors"
 	"github.com/juju/utils"
 
@@ -56,8 +57,8 @@ func (s *Service) serviceName() string {
 	return s.Name + ".service"
 }
 
-// servicePath returns the full path to the service file associated with s.
-func (s *Service) servicePath() string {
+// serviceFilePath returns the full path to the service file associated with s.
+func (s *Service) serviceFilePath() string {
 	return path.Join(s.Conf.InitDir, s.serviceName())
 }
 
@@ -86,28 +87,82 @@ func (s *Service) validate() error {
 
 // render returns the systemd service file in slice of bytes form.
 func (s *Service) render() ([]byte, error) {
-	if err := s.validate(); err != nil {
-		return nil, err
-	}
-	var buf bytes.Buffer
-	if err := serviceTemplate.Execute(&buf, s.Conf); err != nil {
-		return nil, err
+	options := []*unit.UnitOption{
+		&unit.UnitOption{
+			Section: "Unit",
+			Name:    "Description",
+			Value:   s.Conf.Desc,
+		},
+		&unit.UnitOption{
+			Section: "Unit",
+			Name:    "After",
+			Value:   "syslog.target",
+		},
+		&unit.UnitOption{
+			Section: "Unit",
+			Name:    "After",
+			Value:   "network.target",
+		},
+		&unit.UnitOption{
+			Section: "Unit",
+			Name:    "After",
+			Value:   "systemd-user-sessions.service",
+		},
+		&unit.UnitOption{
+			Section: "Service",
+			Name:    "Type",
+			Value:   "forking",
+		},
+		&unit.UnitOption{
+			Section: "Service",
+			Name:    "ExecStart",
+			Value:   s.Conf.Cmd,
+		},
+		&unit.UnitOption{
+			Section: "Service",
+			Name:    "RemainAfterExit",
+			Value:   "yes",
+		},
+		&unit.UnitOption{
+			Section: "Service",
+			Name:    "Restart",
+			Value:   "always",
+		},
+		&unit.UnitOption{
+			Section: "Service",
+			Name:    "TimeoutSec",
+			Value:   "300",
+		},
+		&unit.UnitOption{
+			Section: "Install",
+			Name:    "WantedBy",
+			Value:   "default.target",
+		},
 	}
 
-	res := buf.String()
+	for k, v := range s.Conf.Env {
+		options = append(options, &unit.UnitOption{
+			Section: "Service",
+			Name:    "Environment",
+			Value:   fmt.Sprintf("%s=%s", k, v),
+		})
+	}
 
-	// check for ExtraScript and apply its path (if applicable)
 	if s.Conf.ExtraScript != "" {
-		res = fmt.Sprintf(res, s.Conf.ExtraScript)
+		options = append(options, &unit.UnitOption{
+			Section: "Service",
+			Name:    "ExecStartPre",
+			Value:   s.extraScriptPath(),
+		})
 	}
 
-	return []byte(res), nil
+	res, err := ioutil.ReadAll(unit.Serialize(options))
+	if err != nil {
+		return nil, err
+	}
 
+	return res, nil
 }
-
-// runCommand is simply a variable for utils.RunCommand which was aliased for
-// testing purposes.
-var runCommand = utils.RunCommand
 
 // fileExistsAndMatches is a helper function which determines wether the file
 // pointed to by path exists and if it matches the expected contents.
@@ -142,7 +197,7 @@ func (s *Service) existsAndMatches() (exists, matches bool, _ error) {
 	}
 
 	// check for service file
-	confExists, confMatches, err = fileExistsAndMatches(s.servicePath(), expected)
+	confExists, confMatches, err = fileExistsAndMatches(s.serviceFilePath(), expected)
 	if err != nil {
 		return false, false, errors.Trace(err)
 	}
@@ -161,12 +216,23 @@ func (s *Service) existsAndMatches() (exists, matches bool, _ error) {
 	return confExists, confMatches, nil
 }
 
+// runCommand is simply a variable for utils.RunCommand which was aliased for
+// testing purposes
+var runCommand = utils.RunCommand
+
+// below lie some variables represing the go-systemd/dbus wrapper functions
+// they were aliased for testing purposes
+var list = listUnits
+var reload = reloadDaemon
+var enable = enableUnit
+var disable = disableUnit
+var start = startUnit
+var stop = stopUnit
+
 // enabled returns true if the service has been enabled in systemd.
+// TODO (aznashwan): find a cleaner way to find the status of a unit
 func (s *Service) enabled() bool {
-	out, err := runCommand("systemctl", "status", s.serviceName())
-	if err != nil {
-		return false
-	}
+	out, _ := runCommand("systemctl", "status", s.serviceName())
 
 	return enabledRegexp.MatchString(out)
 }
@@ -174,6 +240,9 @@ func (s *Service) enabled() bool {
 // Install properly places the service file of s in the InitDir, writes the
 // ExtraScript file (if applicable) and starts the service through systemd.
 // NOTE: a service will be enabled by default for it to count as installed.
+// NOTE: the unit file daemon is automatically reloaded, making overriding an
+// existing services possible by creating a new systemd.Service instance and
+// Install()-ing it.
 func (s *Service) Install() error {
 	// check if the service is already installed
 	exists, matches, err := s.existsAndMatches()
@@ -194,7 +263,7 @@ func (s *Service) Install() error {
 	if err != nil {
 		return errors.Trace(err)
 	}
-	if err := ioutil.WriteFile(s.servicePath(), contents, 0644); err != nil {
+	if err := ioutil.WriteFile(s.serviceFilePath(), contents, 0644); err != nil {
 		return errors.Trace(err)
 	}
 
@@ -207,11 +276,17 @@ func (s *Service) Install() error {
 		}
 	}
 
-	// run the enabling command to complete the install
-	if _, err := runCommand("systemctl", "enable", s.serviceName()); err != nil {
+	// tell systemd to reload all unit files
+	if err := reload(); err != nil {
 		return errors.Trace(err)
 	}
 
+	// enable our service
+	if err := enable(s.serviceFilePath()); err != nil {
+		return errors.Trace(err)
+	}
+
+	// start the service to finish off the install
 	return s.Start()
 }
 
@@ -239,17 +314,30 @@ func (s *Service) Exists() bool {
 
 // Running returns a boolean of whether or not the service is actively running.
 func (s *Service) Running() bool {
-	out, err := runCommand("systemctl", "status", s.serviceName())
+	// get all units currently present on the system
+	units, err := list()
 	if err != nil {
 		return false
 	}
 
-	return runningRegexp.MatchString(out)
+	// iterate over all the units in search of one with the same
+	// name as ours and check if it's running or not
+	for _, unit := range units {
+		if unit.Name == s.serviceName() {
+			if unit.ActiveState == "active" {
+				return true
+			} else {
+				return false
+			}
+		}
+	}
+
+	return false
 }
 
 // Start issues the command to systemd to immediately start the service.
 func (s *Service) Start() error {
-	if _, err := runCommand("systemctl", "start", s.serviceName()); err != nil {
+	if err := start(s.serviceName()); err != nil {
 		return errors.Trace(err)
 	}
 
@@ -258,7 +346,7 @@ func (s *Service) Start() error {
 
 // Stop issues the command to systemd to immediately stop the service.
 func (s *Service) Stop() error {
-	if _, err := runCommand("systemctl", "stop", s.serviceName()); err != nil {
+	if err := stop(s.serviceName()); err != nil {
 		return errors.Trace(err)
 	}
 
@@ -268,15 +356,20 @@ func (s *Service) Stop() error {
 // Remove disables the service and deletes the existing service file associated
 // to s together with the ExtraScript file (if applicable).
 func (s *Service) Remove() error {
-	// we do not care about the returned error because `systemctl disable`
-	// simply classifies the disabling operation as succesfull even if the
-	// service is already disabled or does not exist entirely.
-	runCommand("systemctl", "disable", s.serviceName())
+	if err := disable(s.serviceFilePath()); err != nil {
+		return errors.Trace(err)
+	}
 
-	os.Remove(s.servicePath())
+	// remove all files associated with the service
+	os.Remove(s.serviceFilePath())
 
 	if s.Conf.ExtraScript != "" {
 		os.Remove(s.extraScriptPath())
+	}
+
+	// reload all unit files
+	if err := reload(); err != nil {
+		return errors.Trace(err)
 	}
 
 	return nil
@@ -307,7 +400,8 @@ func (s *Service) InstallCommands() (cmds []string, _ error) {
 	}
 
 	cmds = append(cmds, []string{
-		fmt.Sprintf("cat >> %s << 'EOF'\n%s\nEOF\n", s.servicePath(), contents),
+		fmt.Sprintf("cat >> %s << 'EOF'\n%s\nEOF\n", s.serviceFilePath(), contents),
+		"systemctl daemon-reload",
 		"systemctl enable " + s.Name,
 		"systemctl start " + s.Name,
 	}...)
@@ -328,6 +422,7 @@ Type=forking
 {{end}}
 {{if .ExtraScript}}ExecStartPre=%s{{end}}
 ExecStart={{.Cmd}}
+RemainAfterExit=yes
 Restart=always
 TimeoutSec=300
 

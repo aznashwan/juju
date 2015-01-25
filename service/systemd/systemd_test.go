@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coreos/go-systemd/dbus"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
@@ -57,10 +58,10 @@ func (s *SystemdSuite) TestInitDirDefaulting(c *gc.C) {
 	c.Assert(service.Conf.InitDir, gc.Equals, s.initDir)
 }
 
-// TestServicePath tests that servicePath() properly returns the full path of
+// TestServiceFilePath tests that servicePath() properly returns the full path of
 // the service file associated to a service.
-func (s *SystemdSuite) TestServicePath(c *gc.C) {
-	c.Assert(s.service.ServicePath(), gc.Equals, path.Join(s.initDir, "dummy-service.service"))
+func (s *SystemdSuite) TestServiceFilePath(c *gc.C) {
+	c.Assert(s.service.ServiceFilePath(), gc.Equals, path.Join(s.initDir, "dummy-service.service"))
 }
 
 // TestExtraScriptPath tests that extraScriptPath() properly returns the full
@@ -80,17 +81,53 @@ func (s *SystemdSuite) buildDummyRunCommand(issuedcmds *[]string, args ...string
 	}
 }
 
+// buildDummyListUnits returns a function with an identical signature to
+// listUnits() that returns a list dbus.UnitStatus structs which (depending on
+// the value of the parameter given) will return a list with our services
+// in/not in it, and a nil error.
+func (s *SystemdSuite) buildDummyListUnits(good bool) func() ([]dbus.UnitStatus, error) {
+	if good {
+		return func() ([]dbus.UnitStatus, error) {
+			return []dbus.UnitStatus{
+				dbus.UnitStatus{
+					Name:        s.service.ServiceName(),
+					ActiveState: "active",
+				},
+			}, nil
+		}
+	}
+
+	return func() ([]dbus.UnitStatus, error) {
+		return []dbus.UnitStatus{}, nil
+	}
+}
+
+// dummyReloadDaemon is a simple function which always returns a nil error.
+func dummyReloadDaemon() error {
+	return nil
+}
+
+// dummyFunctionProto is a simple function which takes the address of a boolean
+// and returns a function which takes a string and will set that boolean to true
+// if called and a nil error.
+func dummyFunctionProto(boolean *bool) func(string) error {
+	return func(string) error {
+		*boolean = true
+		return nil
+	}
+}
+
 // writeValidServiceFile writes a proper service file to the InitDir.
 func (s *SystemdSuite) writeValidServiceFile(c *gc.C) {
 	contents, err := s.service.Render()
 	c.Assert(err, jc.ErrorIsNil)
-	err = ioutil.WriteFile(s.service.ServicePath(), contents, 0644)
+	err = ioutil.WriteFile(s.service.ServiceFilePath(), contents, 0644)
 	c.Assert(err, jc.ErrorIsNil)
 }
 
 // writeInvalidServiceFile writes an unrelated service file to the InitDir.
 func (s *SystemdSuite) writeInvalidServiceFile(c *gc.C) {
-	err := ioutil.WriteFile(s.service.ServicePath(), []byte("nothing relevant"), 0644)
+	err := ioutil.WriteFile(s.service.ServiceFilePath(), []byte("nothing relevant"), 0644)
 	c.Assert(err, jc.ErrorIsNil)
 }
 
@@ -170,25 +207,24 @@ func (s *SystemdSuite) TestEnabled(c *gc.C) {
 // using Install.
 func (s *SystemdSuite) TestInstallFromScratch(c *gc.C) {
 	var issuedcmds []string
-	var expectedSystemctlCmds = []string{
-		// issue of the below status command is not expected below because of the
-		// lazy evaluation of same && s.enabled() in the Install() method
-		// "systemctl status " + s.service.ServiceName(),
-
-		// called in Install:
-		"systemctl enable " + s.service.ServiceName(),
-
-		// from the call to Start:
-		"systemctl start " + s.service.ServiceName(),
-	}
+	var enableCalled, startCalled bool
 
 	s.PatchValue(systemd.RunCommand, s.buildDummyRunCommand(&issuedcmds, "the service is enabled"))
+	s.PatchValue(systemd.Reload, dummyReloadDaemon)
+	s.PatchValue(systemd.Enable, dummyFunctionProto(&enableCalled))
+	s.PatchValue(systemd.Start, dummyFunctionProto(&startCalled))
 
 	c.Assert(s.service.Install(), jc.ErrorIsNil)
-	c.Assert(issuedcmds, gc.DeepEquals, expectedSystemctlCmds)
+
+	// check that enabled() did not get a chance to get called
+	c.Assert(issuedcmds, gc.DeepEquals, []string{})
+
+	// check that enable() and start() were called
+	c.Assert(enableCalled, jc.IsTrue)
+	c.Assert(startCalled, jc.IsTrue)
 
 	// check service file contents
-	found, err := ioutil.ReadFile(s.service.ServicePath())
+	found, err := ioutil.ReadFile(s.service.ServiceFilePath())
 	c.Assert(err, jc.ErrorIsNil)
 	expected, err := s.service.Render()
 	c.Assert(err, jc.ErrorIsNil)
@@ -205,13 +241,23 @@ func (s *SystemdSuite) TestInstallFromScratch(c *gc.C) {
 // if the service is already installed and enabled.
 func (s *SystemdSuite) TestInstallDefaultsIfAlreadyInstalled(c *gc.C) {
 	var issuedcmds []string
+	var enableCalled, startCalled bool
 
 	s.writeValidScriptFile(c)
 	s.writeValidServiceFile(c)
 	s.PatchValue(systemd.RunCommand, s.buildDummyRunCommand(&issuedcmds, "the service is enabled"))
+	s.PatchValue(systemd.Reload, dummyReloadDaemon)
+	s.PatchValue(systemd.Enable, dummyFunctionProto(&enableCalled))
+	s.PatchValue(systemd.Start, dummyFunctionProto(&startCalled))
 
 	c.Assert(s.service.Install(), jc.ErrorIsNil)
+
+	// check that enabled() was called
 	c.Assert(issuedcmds, gc.DeepEquals, s.serviceStatusCommand())
+
+	// check that enable() and start() were not called
+	c.Assert(enableCalled, jc.IsFalse)
+	c.Assert(startCalled, jc.IsFalse)
 }
 
 // TestInstalled tests Installed's behavior under any set of parameters.
@@ -270,62 +316,50 @@ func (s *SystemdSuite) TestExists(c *gc.C) {
 
 // TestRunning tests Running under both possible scenarios.
 func (s *SystemdSuite) TestRunning(c *gc.C) {
-	var issuedcmds []string
-
-	// `systemctl status` saying service is not running
-	s.PatchValue(systemd.RunCommand, s.buildDummyRunCommand(&issuedcmds, "absolutely whatever"))
+	// service not appearing to be running
+	s.PatchValue(systemd.List, s.buildDummyListUnits(false))
 
 	c.Assert(s.service.Running(), jc.IsFalse)
-	c.Assert(issuedcmds, gc.DeepEquals, s.serviceStatusCommand())
 
 	// `systemctl status` saying service is running
-	s.PatchValue(systemd.RunCommand, s.buildDummyRunCommand(&issuedcmds, " Active: active (running) "))
+	s.PatchValue(systemd.List, s.buildDummyListUnits(true))
 
 	c.Assert(s.service.Running(), jc.IsTrue)
-	c.Assert(issuedcmds, gc.DeepEquals, s.serviceStatusCommand())
 }
 
 // TestStart tests that Start properly issues the commands to start the service.
 func (s *SystemdSuite) TestStart(c *gc.C) {
-	var issuedcmds []string
-	expectedSystemctlCmds := []string{
-		"systemctl start " + s.service.ServiceName(),
-	}
+	var startCalled bool
 
-	s.PatchValue(systemd.RunCommand, s.buildDummyRunCommand(&issuedcmds, " doesn't matter "))
+	s.PatchValue(systemd.Start, dummyFunctionProto(&startCalled))
 
 	c.Assert(s.service.Start(), jc.ErrorIsNil)
-	c.Assert(issuedcmds, gc.DeepEquals, expectedSystemctlCmds)
 }
 
 // TestStop tests that Stop properly issues the command to stop the service.
 func (s *SystemdSuite) TestStop(c *gc.C) {
-	var issuedcmds []string
-	expectedSystemctlCmds := []string{
-		"systemctl stop " + s.service.ServiceName(),
-	}
+	var stopCalled bool
 
-	s.PatchValue(systemd.RunCommand, s.buildDummyRunCommand(&issuedcmds, " doesn't matter "))
+	s.PatchValue(systemd.Stop, dummyFunctionProto(&stopCalled))
 
 	c.Assert(s.service.Stop(), jc.ErrorIsNil)
-	c.Assert(issuedcmds, gc.DeepEquals, expectedSystemctlCmds)
+	c.Assert(stopCalled, jc.IsTrue)
 }
 
 // TestRemove tests if Remove properly cleans up an installed service.
 func (s *SystemdSuite) TestRemove(c *gc.C) {
-	var issuedcmds []string
-	expectedSystemctlCmds := []string{
-		"systemctl disable " + s.service.ServiceName(),
-	}
+	var disableCalled bool
 
 	s.writeValidScriptFile(c)
 	s.writeValidServiceFile(c)
-	s.PatchValue(systemd.RunCommand, s.buildDummyRunCommand(&issuedcmds, "the service is enabled"))
+
+	s.PatchValue(systemd.Disable, dummyFunctionProto(&disableCalled))
+	s.PatchValue(systemd.Reload, dummyReloadDaemon)
 
 	c.Assert(s.service.Remove(), jc.ErrorIsNil)
 
 	// check that service file was removed
-	_, err := os.Stat(s.service.ServicePath())
+	_, err := os.Stat(s.service.ServiceFilePath())
 	c.Assert(err, jc.Satisfies, os.IsNotExist)
 
 	// check that ExtraScript file was removed
@@ -333,51 +367,23 @@ func (s *SystemdSuite) TestRemove(c *gc.C) {
 	c.Assert(err, jc.Satisfies, os.IsNotExist)
 
 	// check that the command for disabling the process was properly issued
-	c.Assert(issuedcmds, gc.DeepEquals, expectedSystemctlCmds)
-}
-
-// TestRemoveProceedsIfNotInstalled tests wether Remove properly proceeds
-// if the service file or the ExtraScript file of the service it
-// is trying to remove are not there to begin with.
-func (s *SystemdSuite) TestRemoveProceedsIfNotInstalled(c *gc.C) {
-	var issuedcmds []string
-	s.PatchValue(systemd.RunCommand, s.buildDummyRunCommand(&issuedcmds, " doesn't matter "))
-
-	// service file or ExtraScript file not there in the first place
-	c.Assert(s.service.Remove(), jc.ErrorIsNil)
-	c.Assert(issuedcmds, gc.DeepEquals, []string{"systemctl disable " + s.service.ServiceName()})
-
-	// service file present but ExtraScript not there
-	s.writeValidServiceFile(c)
-	s.PatchValue(systemd.RunCommand, s.buildDummyRunCommand(&issuedcmds, " doesn't matter "))
-
-	c.Assert(s.service.Remove(), jc.ErrorIsNil)
-	c.Assert(issuedcmds, gc.DeepEquals, []string{"systemctl disable " + s.service.ServiceName()})
-
-	// service file not present but ExtraScript file is there
-	s.writeValidScriptFile(c)
-	s.PatchValue(systemd.RunCommand, s.buildDummyRunCommand(&issuedcmds, " doesn't matter "))
-
-	c.Assert(s.service.Remove(), jc.ErrorIsNil)
-	c.Assert(issuedcmds, gc.DeepEquals, []string{"systemctl disable " + s.service.ServiceName()})
+	c.Assert(disableCalled, jc.IsTrue)
 }
 
 // TestStopAndRemove tests StopAndRemove on a properly installed service.
 func (s *SystemdSuite) TestStopAndRemove(c *gc.C) {
-	var issuedcmds []string
-	expectedSystemctlCmds := []string{
-		"systemctl stop " + s.service.ServiceName(),
-		"systemctl disable " + s.service.ServiceName(),
-	}
+	var stopCalled, disableCalled bool
 
 	s.writeValidScriptFile(c)
 	s.writeValidServiceFile(c)
-	s.PatchValue(systemd.RunCommand, s.buildDummyRunCommand(&issuedcmds, " doesn't matter "))
+	s.PatchValue(systemd.Stop, dummyFunctionProto(&stopCalled))
+	s.PatchValue(systemd.Disable, dummyFunctionProto(&disableCalled))
+	s.PatchValue(systemd.Reload, dummyReloadDaemon)
 
 	c.Assert(s.service.StopAndRemove(), jc.ErrorIsNil)
 
 	// check that the service file was removed
-	_, err := os.Stat(s.service.ServicePath())
+	_, err := os.Stat(s.service.ServiceFilePath())
 	c.Assert(err, jc.Satisfies, os.IsNotExist)
 
 	// check that the ExtraScript file was removed
@@ -385,5 +391,6 @@ func (s *SystemdSuite) TestStopAndRemove(c *gc.C) {
 	c.Assert(err, jc.Satisfies, os.IsNotExist)
 
 	// check that the stopping and disabling commands were properly issued
-	c.Assert(issuedcmds, gc.DeepEquals, expectedSystemctlCmds)
+	c.Assert(stopCalled, jc.IsTrue)
+	c.Assert(disableCalled, jc.IsTrue)
 }

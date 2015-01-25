@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/coreos/go-systemd/dbus"
 	"github.com/juju/utils/exec"
 
 	"github.com/juju/juju/service/common"
@@ -91,28 +92,23 @@ func upstartListServices(initDir string) ([]string, error) {
 }
 
 func systemdListServices() ([]string, error) {
-	cmd := exec.RunParams{
-		Commands: "systemctl list-unit-files --all --type=service --no-legend --no-pager",
-	}
+	var services []string
 
-	out, err := exec.RunCommands(cmd)
+	conn, err := dbus.New()
 	if err != nil {
 		return nil, err
 	}
-	if out.Code != 0 {
-		return nil, fmt.Errorf("Error running %s: %s", cmd.Commands, out.Stderr)
+	defer conn.Close()
+
+	units, err := conn.ListUnits()
+	if err != nil {
+		return nil, err
 	}
 
-	// unfortunately, there is no complete --quiet option to systemctl that
-	// outputs the names of the installed service files without their status
-	// alongside them, so we must resort to more unelegant means:
-	items := strings.Fields(string(out.Stdout))
-	var services []string
-	for i, item := range items {
-		if i%2 == 0 {
-			services = append(services, item)
-		}
+	for _, unit := range units {
+		services = append(services, unit.Name)
 	}
+
 	return services, nil
 }
 

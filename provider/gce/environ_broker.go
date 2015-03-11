@@ -22,7 +22,7 @@ import (
 	"github.com/juju/juju/tools"
 )
 
-func isStateServer(mcfg *cloudinit.MachineConfig) bool {
+func isStateServer(mcfg *cloudinit.InstanceConfig) bool {
 	return multiwatcher.AnyJobNeedsState(mcfg.Jobs...)
 }
 
@@ -35,7 +35,7 @@ func (env *environ) StartInstance(args environs.StartInstanceParams) (*environs.
 
 	// Start a new instance.
 
-	if args.MachineConfig.HasNetworks() {
+	if args.InstanceConfig.HasNetworks() {
 		return nil, errors.New("starting instances with networks is not supported yet")
 	}
 
@@ -58,10 +58,10 @@ func (env *environ) StartInstance(args environs.StartInstanceParams) (*environs.
 	// Ensure the API server port is open (globally for all instances
 	// on the network, not just for the specific node of the state
 	// server). See LP bug #1436191 for details.
-	if isStateServer(args.MachineConfig) {
+	if isStateServer(args.InstanceConfig) {
 		ports := network.PortRange{
-			FromPort: args.MachineConfig.StateServingInfo.APIPort,
-			ToPort:   args.MachineConfig.StateServingInfo.APIPort,
+			FromPort: args.InstanceConfig.StateServingInfo.APIPort,
+			ToPort:   args.InstanceConfig.StateServingInfo.APIPort,
 			Protocol: "tcp",
 		}
 		if err := env.gce.OpenPorts(env.globalFirewallName(), ports); err != nil {
@@ -98,8 +98,8 @@ func (env *environ) finishMachineConfig(args environs.StartInstanceParams, spec 
 		return errors.Errorf("chosen architecture %v not present in %v", spec.Image.Arch, arches)
 	}
 
-	args.MachineConfig.Tools = envTools[0]
-	return environs.FinishMachineConfig(args.MachineConfig, env.Config())
+	args.InstanceConfig.Tools = envTools[0]
+	return environs.FinishMachineConfig(args.InstanceConfig, env.Config())
 }
 
 // buildInstanceSpec builds an instance spec from the provided args
@@ -155,7 +155,7 @@ var imageMetadataFetch = imagemetadata.Fetch
 // provisioned, relative to the provided args and spec. Info for that
 // low-level instance is returned.
 func (env *environ) newRawInstance(args environs.StartInstanceParams, spec *instances.InstanceSpec) (*google.Instance, error) {
-	machineID := common.MachineFullName(env, args.MachineConfig.MachineId)
+	machineID := common.MachineFullName(env, args.InstanceConfig.MachineId)
 
 	metadata, err := getMetadata(args)
 	if err != nil {
@@ -191,13 +191,13 @@ func (env *environ) newRawInstance(args environs.StartInstanceParams, spec *inst
 // getMetadata builds the raw "user-defined" metadata for the new
 // instance (relative to the provided args) and returns it.
 func getMetadata(args environs.StartInstanceParams) (map[string]string, error) {
-	userData, err := environs.ComposeUserData(args.MachineConfig, nil)
+	userData, err := environs.ComposeUserData(args.InstanceConfig, nil)
 	if err != nil {
 		return nil, errors.Annotate(err, "cannot make user data")
 	}
 	logger.Debugf("GCE user data; %d bytes", len(userData))
 
-	authKeys, err := google.FormatAuthorizedKeys(args.MachineConfig.AuthorizedKeys, "ubuntu")
+	authKeys, err := google.FormatAuthorizedKeys(args.InstanceConfig.AuthorizedKeys, "ubuntu")
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -215,7 +215,7 @@ func getMetadata(args environs.StartInstanceParams) (map[string]string, error) {
 		metadataKeyEncoding: "base64",
 		metadataKeySSHKeys:  authKeys,
 	}
-	if isStateServer(args.MachineConfig) {
+	if isStateServer(args.InstanceConfig) {
 		metadata[metadataKeyIsState] = metadataValueTrue
 	}
 

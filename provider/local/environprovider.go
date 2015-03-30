@@ -134,11 +134,7 @@ func (p environProvider) PrepareForCreateEnvironment(cfg *config.Config) (*confi
 		if cfg.AptHttpProxy() == "" &&
 			cfg.AptHttpsProxy() == "" &&
 			cfg.AptFtpProxy() == "" {
-			pacman, err := getPackageManager()
-			if err != nil {
-				return nil, errors.Trace(err)
-			}
-			proxySettings, err := pacman.GetProxySettings()
+			proxySettings, err := detectPackageProxies()
 			if err != nil {
 				return nil, errors.Trace(err)
 			}

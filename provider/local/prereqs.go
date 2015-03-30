@@ -82,24 +82,14 @@ func verifyLxc() error {
 }
 
 func verifyCloudImageUtils() error {
-	pacman, err := getPackageManager()
-	if err != nil {
-		return err
-	}
-
-	if pacman.IsInstalled("cloud-image-utils") {
+	if isPackageInstalled("cloud-image-utils") {
 		return nil
 	}
 	return errors.New(installCloudImageUtils)
 }
 
 func verifyJujuLocal() error {
-	pacman, err := getPackageManager()
-	if err != nil {
-		return err
-	}
-
-	if pacman.IsInstalled("juju-local") {
+	if isPackageInstalled("juju-local") {
 		return nil
 	}
 	return errors.New(installJujuLocalUbuntu)

@@ -6,10 +6,21 @@ package local
 import (
 	"github.com/juju/juju/version"
 	"github.com/juju/utils/packaging/manager"
+	"github.com/juju/utils/proxy"
 )
 
-// getPackageManager is a helper function which returns the
-// package manager implementation for the current system.
-func getPackageManager() (manager.PackageManager, error) {
-	return manager.NewPackageManager(version.Current.Series)
+// isPackageInstalled is a helper function which instantiates a new
+// PackageManager for the current system and checks whether the given package is
+// installed.
+var isPackageInstalled = func(pack string) bool {
+	pacman, _ := manager.NewPackageManager(version.Current.Series)
+	return pacman.IsInstalled(pack)
+}
+
+// detectPackageProxies is a helper function which instantiates a new
+// PackageManager for the current system and checks for package manager proxy
+// settings.
+var detectPackageProxies = func() (proxy.Settings, error) {
+	pacman, _ := manager.NewPackageManager(version.Current.Series)
+	return pacman.GetProxySettings()
 }

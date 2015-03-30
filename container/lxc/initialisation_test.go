@@ -5,7 +5,7 @@ package lxc
 
 import (
 	jc "github.com/juju/testing/checkers"
-	"github.com/juju/utils/apt"
+	pacman "github.com/juju/utils/packaging/manager"
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/testing"
@@ -18,7 +18,7 @@ type InitialiserSuite struct {
 var _ = gc.Suite(&InitialiserSuite{})
 
 func (s *InitialiserSuite) TestLTSSeriesPackages(c *gc.C) {
-	cmdChan := s.HookCommandOutput(&apt.CommandOutput, []byte{}, nil)
+	cmdChan := s.HookCommandOutput(&pacman.CommandOutput, []byte{}, nil)
 	container := NewContainerInitialiser("precise")
 	err := container.Initialise()
 	c.Assert(err, jc.ErrorIsNil)
@@ -32,7 +32,7 @@ func (s *InitialiserSuite) TestLTSSeriesPackages(c *gc.C) {
 }
 
 func (s *InitialiserSuite) TestNoSeriesPackages(c *gc.C) {
-	cmdChan := s.HookCommandOutput(&apt.CommandOutput, []byte{}, nil)
+	cmdChan := s.HookCommandOutput(&pacman.CommandOutput, []byte{}, nil)
 	container := NewContainerInitialiser("")
 	err := container.Initialise()
 	c.Assert(err, jc.ErrorIsNil)

@@ -154,7 +154,7 @@ func (s *UserDataSuite) TestShutdownInitScript(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(script, jc.DeepEquals, `
-cat >> /etc/init/juju-template-restart.conf << 'EOF'
+cat > /etc/init/juju-template-restart.conf << 'EOF'
 description "juju shutdown job"
 author "Juju Team <juju@lists.ubuntu.com>"
 start on stopped cloud-final

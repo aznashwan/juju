@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	jc "github.com/juju/testing/checkers"
+	"github.com/juju/utils/packaging"
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/cloudconfig/cloudinit"
-	"github.com/juju/juju/cloudconfig/cloudinit/packaging"
 	coretesting "github.com/juju/juju/testing"
 	sshtesting "github.com/juju/juju/utils/ssh/testing"
 )
@@ -185,7 +185,7 @@ var ctests = []struct {
 			},
 		}},
 		func(cfg cloudinit.CloudConfig) {
-			cfg.AddPackageSource(packaging.Source{Url: "keyName", Key: "someKey"})
+			cfg.AddPackageSource(packaging.PackageSource{Url: "keyName", Key: "someKey"})
 		},
 	},
 	{
@@ -214,7 +214,7 @@ var ctests = []struct {
 				Pin:         "release n=series",
 				Priority:    123,
 			}
-			cfg.AddPackageSource(packaging.Source{Url: "keyName", Key: "someKey"})
+			cfg.AddPackageSource(packaging.PackageSource{Url: "keyName", Key: "someKey"})
 			cfg.AddPackagePreferences(prefs)
 		},
 	},

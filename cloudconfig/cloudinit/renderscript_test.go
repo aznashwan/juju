@@ -7,11 +7,11 @@ import (
 	"regexp"
 
 	jc "github.com/juju/testing/checkers"
+	"github.com/juju/utils/packaging"
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/cloudconfig"
 	"github.com/juju/juju/cloudconfig/cloudinit"
-	"github.com/juju/juju/cloudconfig/cloudinit/packaging"
 	"github.com/juju/juju/cloudconfig/instancecfg"
 	"github.com/juju/juju/constraints"
 	"github.com/juju/juju/environs"
@@ -160,7 +160,7 @@ func (s *configureSuite) TestAptUpdate(c *gc.C) {
 
 	// If we add sources, but disable updates, display an error.
 	cfg.SetSystemUpdate(false)
-	source := packaging.Source{
+	source := packaging.PackageSource{
 		Name: "source",
 		Url:  "source",
 		Key:  "key",
@@ -176,7 +176,7 @@ func (s *configureSuite) TestAptUpgrade(c *gc.C) {
 	cfg, err := cloudinit.New("quantal")
 	c.Assert(err, jc.ErrorIsNil)
 	cfg.SetSystemUpdate(true)
-	source := packaging.Source{
+	source := packaging.PackageSource{
 		Name: "source",
 		Url:  "source",
 		Key:  "key",

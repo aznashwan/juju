@@ -12,8 +12,8 @@ import (
 	"time"
 
 	jc "github.com/juju/testing/checkers"
-	"github.com/juju/utils/packaging/commander"
-	"github.com/juju/utils/packaging/configurer"
+	"github.com/juju/utils/packaging/commands"
+	"github.com/juju/utils/packaging/configuration"
 	"github.com/juju/utils/proxy"
 	gc "gopkg.in/check.v1"
 
@@ -60,7 +60,7 @@ func (s *ProxyUpdaterSuite) SetUpTest(c *gc.C) {
 	s.PatchValue(&proxyupdater.ProxyDirectory, proxyDir)
 	s.started = make(chan struct{})
 	s.PatchValue(&proxyupdater.Started, s.setStarted)
-	s.PatchValue(&configurer.AptProxyConfigFile, path.Join(proxyDir, "juju-apt-proxy"))
+	s.PatchValue(&configuration.AptProxyConfigFile, path.Join(proxyDir, "juju-apt-proxy"))
 	s.proxyFile = path.Join(proxyDir, proxyupdater.ProxyFile)
 }
 
@@ -158,9 +158,9 @@ func (s *ProxyUpdaterSuite) TestInitialState(c *gc.C) {
 	s.waitProxySettings(c, proxySettings)
 	s.waitForFile(c, s.proxyFile, proxySettings.AsScriptEnvironment()+"\n")
 
-	paccmder, err := commander.NewPackageCommander(version.Current.Series)
+	paccmder, err := commands.NewPackageCommander(version.Current.Series)
 	c.Assert(err, jc.ErrorIsNil)
-	s.waitForFile(c, configurer.AptProxyConfigFile, paccmder.ProxyConfigContents(aptProxySettings)+"\n")
+	s.waitForFile(c, configuration.AptProxyConfigFile, paccmder.ProxyConfigContents(aptProxySettings)+"\n")
 }
 
 func (s *ProxyUpdaterSuite) TestWriteSystemFiles(c *gc.C) {
@@ -173,9 +173,9 @@ func (s *ProxyUpdaterSuite) TestWriteSystemFiles(c *gc.C) {
 	s.waitProxySettings(c, proxySettings)
 	s.waitForFile(c, s.proxyFile, proxySettings.AsScriptEnvironment()+"\n")
 
-	paccmder, err := commander.NewPackageCommander(version.Current.Series)
+	paccmder, err := commands.NewPackageCommander(version.Current.Series)
 	c.Assert(err, jc.ErrorIsNil)
-	s.waitForFile(c, configurer.AptProxyConfigFile, paccmder.ProxyConfigContents(aptProxySettings)+"\n")
+	s.waitForFile(c, configuration.AptProxyConfigFile, paccmder.ProxyConfigContents(aptProxySettings)+"\n")
 }
 
 func (s *ProxyUpdaterSuite) TestEnvironmentVariables(c *gc.C) {
@@ -213,6 +213,6 @@ func (s *ProxyUpdaterSuite) TestDontWriteSystemFiles(c *gc.C) {
 	s.waitForPostSetup(c)
 
 	s.waitProxySettings(c, proxySettings)
-	c.Assert(configurer.AptProxyConfigFile, jc.DoesNotExist)
+	c.Assert(configuration.AptProxyConfigFile, jc.DoesNotExist)
 	c.Assert(s.proxyFile, jc.DoesNotExist)
 }

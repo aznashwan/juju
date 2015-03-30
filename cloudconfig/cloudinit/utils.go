@@ -15,7 +15,7 @@ import (
 
 	"github.com/juju/utils"
 	"github.com/juju/utils/packaging"
-	"github.com/juju/utils/packaging/configurer"
+	"github.com/juju/utils/packaging/configuration"
 )
 
 // addPackageSourceCmds is a helper function that returns the corresponding
@@ -25,11 +25,11 @@ func addPackageSourceCmds(cfg CloudConfig, src packaging.PackageSource) []string
 
 	// if keyfile is required, add it first
 	if src.Key != "" {
-		keyFilePath := configurer.YumKeyfileDir + src.KeyFileName()
+		keyFilePath := configuration.YumKeyfileDir + src.KeyFileName()
 		cmds = append(cmds, addFileCmds(keyFilePath, []byte(src.Key), 0644, false)...)
 	}
 
-	cmds = append(cmds, addFileCmds(path.Join(configurer.YumSourcesDir, src.Name+".repo"),
+	cmds = append(cmds, addFileCmds(path.Join(configuration.YumSourcesDir, src.Name+".repo"),
 		[]byte(cfg.getPackagingConfigurer().RenderSource(src)), 0644, false)...)
 
 	return cmds

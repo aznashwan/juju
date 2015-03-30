@@ -12,7 +12,7 @@ import (
 	"github.com/juju/loggo"
 	"github.com/juju/names"
 	jc "github.com/juju/testing/checkers"
-	pacconf "github.com/juju/utils/packaging/configurer"
+	pacconf "github.com/juju/utils/packaging/configuration"
 	"github.com/juju/utils/set"
 	gc "gopkg.in/check.v1"
 	goyaml "gopkg.in/yaml.v1"

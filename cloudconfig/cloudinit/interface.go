@@ -10,8 +10,8 @@ package cloudinit
 import (
 	"github.com/juju/errors"
 	"github.com/juju/utils/packaging"
-	"github.com/juju/utils/packaging/commander"
-	"github.com/juju/utils/packaging/configurer"
+	"github.com/juju/utils/packaging/commands"
+	"github.com/juju/utils/packaging/configuration"
 	"github.com/juju/utils/proxy"
 	"github.com/juju/utils/shell"
 
@@ -355,10 +355,10 @@ type AdvancedPackagingConfig interface {
 	)
 
 	// getPackageCommander returns the PackageCommander of the CloudConfig.
-	getPackageCommander() commander.PackageCommander
+	getPackageCommander() commands.PackageCommander
 
 	// getPackagingConfigurer returns the PackagingConfigurer of the CloudConfig.
-	getPackagingConfigurer() configurer.PackagingConfigurer
+	getPackagingConfigurer() configuration.PackagingConfigurer
 
 	// This is a helper to add the proper packages that we want to update per
 	// distribution.
@@ -399,8 +399,8 @@ func New(series string) (CloudConfig, error) {
 		return &UbuntuCloudConfig{
 			&cloudConfig{
 				series:    series,
-				paccmder:  commander.NewAptPackageCommander(),
-				pacconfer: configurer.NewAptPackagingConfigurer(series),
+				paccmder:  commands.NewAptPackageCommander(),
+				pacconfer: configuration.NewAptPackagingConfigurer(series),
 				renderer:  renderer,
 				attrs:     make(map[string]interface{}),
 			},
@@ -410,8 +410,8 @@ func New(series string) (CloudConfig, error) {
 		return &CentOSCloudConfig{
 			&cloudConfig{
 				series:    series,
-				paccmder:  commander.NewYumPackageCommander(),
-				pacconfer: configurer.NewYumPackagingConfigurer(series),
+				paccmder:  commands.NewYumPackageCommander(),
+				pacconfer: configuration.NewYumPackagingConfigurer(series),
 				renderer:  renderer,
 				attrs:     make(map[string]interface{}),
 			},

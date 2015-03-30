@@ -11,8 +11,8 @@ import (
 	"github.com/juju/loggo"
 	"github.com/juju/utils"
 	"github.com/juju/utils/exec"
-	"github.com/juju/utils/packaging/commander"
-	"github.com/juju/utils/packaging/configurer"
+	"github.com/juju/utils/packaging/commands"
+	"github.com/juju/utils/packaging/configuration"
 	proxyutils "github.com/juju/utils/proxy"
 
 	"github.com/juju/juju/api/environment"
@@ -161,8 +161,8 @@ func (w *proxyWorker) handleProxyValues(proxySettings proxyutils.Settings) {
 
 // getPackageCommander is a helper function which returns the
 // package commands implementation for the current system.
-func getPackageCommander() (commander.PackageCommander, error) {
-	return commander.NewPackageCommander(version.Current.Series)
+func getPackageCommander() (commands.PackageCommander, error) {
+	return commands.NewPackageCommander(version.Current.Series)
 }
 
 func (w *proxyWorker) handleAptProxyValues(aptSettings proxyutils.Settings) {
@@ -173,7 +173,7 @@ func (w *proxyWorker) handleAptProxyValues(aptSettings proxyutils.Settings) {
 
 		// Always finish with a new line.
 		content := paccmder.ProxyConfigContents(w.aptProxy) + "\n"
-		err := ioutil.WriteFile(configurer.AptProxyConfigFile, []byte(content), 0644)
+		err := ioutil.WriteFile(configuration.AptProxyConfigFile, []byte(content), 0644)
 		if err != nil {
 			// It isn't really fatal, but we should record it.
 			logger.Errorf("error writing apt proxy config file: %v", err)

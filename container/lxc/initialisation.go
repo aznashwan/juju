@@ -6,7 +6,7 @@ package lxc
 import (
 	"strings"
 
-	"github.com/juju/utils/packaging/configurer"
+	"github.com/juju/utils/packaging/configuration"
 	"github.com/juju/utils/packaging/manager"
 
 	"github.com/juju/juju/container"
@@ -44,8 +44,8 @@ func getPackageManager() (manager.PackageManager, error) {
 
 // getPackagingConfigurer is a helper function which returns the
 // packaging configuration manager for the current system.
-func getPackagingConfigurer() (configurer.PackagingConfigurer, error) {
-	return configurer.NewPackagingConfigurer(version.Current.Series)
+func getPackagingConfigurer() (configuration.PackagingConfigurer, error) {
+	return configuration.NewPackagingConfigurer(version.Current.Series)
 }
 
 // ensureDependencies creates a set of install packages using

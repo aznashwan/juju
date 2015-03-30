@@ -14,7 +14,7 @@ import (
 	"github.com/juju/errors"
 	"github.com/juju/utils"
 	"github.com/juju/utils/packaging"
-	"github.com/juju/utils/packaging/configurer"
+	"github.com/juju/utils/packaging/configuration"
 	"github.com/juju/utils/proxy"
 	"gopkg.in/yaml.v1"
 )
@@ -123,7 +123,7 @@ func (cfg *UbuntuCloudConfig) AddPackageCommands(
 
 // AddCloudArchiveCloudTools implements AdvancedPackagingConfig.
 func (cfg *UbuntuCloudConfig) AddCloudArchiveCloudTools() {
-	src, pref := configurer.GetCloudArchiveSource(cfg.series)
+	src, pref := configuration.GetCloudArchiveSource(cfg.series)
 	cfg.AddPackageSource(src)
 	cfg.AddPackagePreferences(pref)
 }
@@ -143,9 +143,9 @@ func (cfg *UbuntuCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 	// If a mirror is specified, rewrite sources.list and rename cached index files.
 	if newMirror := cfg.PackageMirror(); newMirror != "" {
 		cmds = append(cmds, LogProgressCmd("Changing apt mirror to "+newMirror))
-		cmds = append(cmds, "old_mirror=$("+configurer.ExtractAptSource+")")
+		cmds = append(cmds, "old_mirror=$("+configuration.ExtractAptSource+")")
 		cmds = append(cmds, "new_mirror="+newMirror)
-		cmds = append(cmds, `sed -i s,$old_mirror,$new_mirror, `+configurer.AptSourcesFile)
+		cmds = append(cmds, `sed -i s,$old_mirror,$new_mirror, `+configuration.AptSourcesFile)
 		cmds = append(cmds, renameAptListFilesCommands("$new_mirror", "$old_mirror")...)
 	}
 
@@ -182,7 +182,7 @@ func (cfg *UbuntuCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 	// Define the "apt_get_loop" function, and wrap apt-get with it.
 	// TODO: If we do this hack here we can't use the package manager anymore
 	// Maybe wrap it inside packageManager?
-	cmds = append(cmds, configurer.PackageManagerLoopFunction)
+	cmds = append(cmds, configuration.PackageManagerLoopFunction)
 
 	looper := "package_manager_loop "
 
@@ -237,8 +237,8 @@ func (cfg *UbuntuCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 // and returns a sequence of commands that will rename the files
 // in aptListsDirectory.
 func renameAptListFilesCommands(newMirror, oldMirror string) []string {
-	oldPrefix := "old_prefix=" + configurer.AptListsDirectory + "/$(echo " + oldMirror + " | " + configurer.AptSourceListPrefix + ")"
-	newPrefix := "new_prefix=" + configurer.AptListsDirectory + "/$(echo " + newMirror + " | " + configurer.AptSourceListPrefix + ")"
+	oldPrefix := "old_prefix=" + configuration.AptListsDirectory + "/$(echo " + oldMirror + " | " + configuration.AptSourceListPrefix + ")"
+	newPrefix := "new_prefix=" + configuration.AptListsDirectory + "/$(echo " + newMirror + " | " + configuration.AptSourceListPrefix + ")"
 	renameFiles := `
 for old in ${old_prefix}_*; do
     new=$(echo $old | sed s,^$old_prefix,$new_prefix,)
@@ -291,7 +291,7 @@ func (cfg *UbuntuCloudConfig) updatePackages() {
 func (cfg *UbuntuCloudConfig) updateProxySettings(proxySettings proxy.Settings) {
 	// Write out the apt proxy settings
 	if (proxySettings != proxy.Settings{}) {
-		filename := configurer.AptProxyConfigFile
+		filename := configuration.AptProxyConfigFile
 		cfg.AddBootCmd(fmt.Sprintf(
 			`printf '%%s\n' %s > %s`,
 			shquote(cfg.paccmder.ProxyConfigContents(proxySettings)),

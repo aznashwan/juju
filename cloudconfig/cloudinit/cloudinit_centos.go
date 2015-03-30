@@ -11,7 +11,7 @@ import (
 	"fmt"
 
 	"github.com/juju/utils/packaging"
-	"github.com/juju/utils/packaging/configurer"
+	"github.com/juju/utils/packaging/configuration"
 	"github.com/juju/utils/proxy"
 	"gopkg.in/yaml.v1"
 )
@@ -54,7 +54,7 @@ func (cfg *CentOSCloudConfig) SetPackageMirror(url string) {
 // addPackageMirrorCmd is a helper function that returns the corresponding runcmds
 // to apply the package mirror settings on a CentOS machine.
 func addPackageMirrorCmd(cfg CloudConfig, url string) string {
-	return fmt.Sprintf(configurer.ReplaceCentOSMirror, url)
+	return fmt.Sprintf(configuration.ReplaceCentOSMirror, url)
 }
 
 // UnsetPackageMirror implements PackageMirrorConfig.
@@ -136,7 +136,7 @@ func (cfg *CentOSCloudConfig) RenderScript() (string, error) {
 
 // AddCloudArchiveCloudTools implements AdvancedPackagingConfig.
 func (cfg *CentOSCloudConfig) AddCloudArchiveCloudTools() {
-	src, pref := configurer.GetCloudArchiveSource(cfg.series)
+	src, pref := configuration.GetCloudArchiveSource(cfg.series)
 	cfg.AddPackageSource(src)
 	cfg.AddPackagePreferences(pref)
 }
@@ -176,7 +176,7 @@ func (cfg *CentOSCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 	//}
 
 	// Define the "package_get_loop" function
-	cmds = append(cmds, configurer.PackageManagerLoopFunction)
+	cmds = append(cmds, configuration.PackageManagerLoopFunction)
 
 	if cfg.SystemUpdate() {
 		cmds = append(cmds, LogProgressCmd("Running yum update"))

@@ -120,7 +120,7 @@ func (cfg *CentOSCloudConfig) RenderYAML() ([]byte, error) {
 	}
 
 	//restore
-	//TODO(centos): check that this actually works
+	//TODO(bogdanteleaga, aznashwan): check that this actually works
 	// We have the same thing in ubuntu as well
 	cfg.SetPackageProxy(proxy)
 	cfg.SetPackageMirror(mirror)
@@ -145,18 +145,19 @@ func (cfg *CentOSCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 
 	if newMirror := cfg.PackageMirror(); newMirror != "" {
 		cmds = append(cmds, LogProgressCmd("Changing package mirror does not yet work on CentOS"))
-		// TODO(bogdanteleaga, aznashwan): This should be done in a further PR
-		// once we add more mirrror options values to environs.Config
+		// TODO(bogdanteleaga, aznashwan): This should work after a further PR
+		// where we add more mirrror options values to environs.Config
+		cmds = append(cmds, addPackageMirrorCmd(cfg, newMirror))
 	}
 
 	for _, src := range cfg.PackageSources() {
-		// TODO(centos): Keys are usually offered by repositories, and you need to
+		// TODO(bogdanteleaga. aznashwan): Keys are usually offered by repositories, and you need to
 		// accept them. Check how this can be done non interactively.
 		cmds = append(cmds, LogProgressCmd("Adding yum repository: %s", src.Url))
 		cmds = append(cmds, cfg.paccmder.AddRepositoryCmd(src.Url))
 	}
 
-	//TODO(aznashwan): Don't forget about PackagePreferences on CentOS
+	// TODO(bogdanteleaga. aznashwan): Research what else needs to be done here
 
 	// Define the "package_get_loop" function
 	cmds = append(cmds, configuration.PackageManagerLoopFunction)
@@ -223,10 +224,9 @@ func (cfg *CentOSCloudConfig) updatePackages() {
 	}
 }
 
-//TODO(centos): is this the same as doing addPackageProxyCommands?
-// either way implement something
-// Ubuntu uses the equivalent for this when rendering cloudInit as a script
-// In CentOS we use it in both YAML and bash rendering. We could use the same
-// thing for both I guess
+//TODO(bogdanteleaga, aznashwan): On ubuntu when we render the conf as yaml we
+//have apt_proxy and when we render it as bash we use the equivalent of this.
+//However on centOS even when rendering the YAML we use a helper function
+//addPackageProxyCmds. Research if calling the same is fine.
 func (cfg *CentOSCloudConfig) updateProxySettings(proxySettings proxy.Settings) {
 }

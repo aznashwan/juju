@@ -95,7 +95,7 @@ func (cfg *UbuntuCloudConfig) RenderYAML() ([]byte, error) {
 	}
 
 	//restore
-	cfg.SetAttr("package_preferences", prefs)
+	cfg.SetAttr("apt_preferences", prefs)
 
 	return append([]byte("#cloud-config\n"), data...), nil
 }
@@ -136,9 +136,6 @@ func (cfg *UbuntuCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 		return nil, fmt.Errorf("update sources were specified, but OS updates have been disabled.")
 	}
 
-	// the basic command for all apt-get calls
-	//		--assume-yes to never prompt for confirmation
-	//		--force-confold is passed to dpkg to never overwrite config files
 	var cmds []string
 
 	// If a mirror is specified, rewrite sources.list and rename cached index files.
@@ -277,7 +274,7 @@ func (cfg *UbuntuCloudConfig) updatePackages() {
 	}
 }
 
-// This may replace the SetProxy func. See parent for info
+// Updates proxy settings used when rendering the conf as a script
 func (cfg *UbuntuCloudConfig) updateProxySettings(proxySettings proxy.Settings) {
 	// Write out the apt proxy settings
 	if (proxySettings != proxy.Settings{}) {

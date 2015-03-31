@@ -6,7 +6,7 @@ package containerinit_test
 import (
 	"path/filepath"
 	"strings"
-	gotesting "testing"
+	stdtesting "testing"
 
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
@@ -22,7 +22,7 @@ import (
 	"github.com/juju/juju/testing"
 )
 
-func Test(t *gotesting.T) {
+func Test(t *stdtesting.T) {
 	gc.TestingT(t)
 }
 
@@ -150,8 +150,8 @@ func assertUserData(c *gc.C, cloudConf cloudinit.CloudConfig, expected string) {
 	}
 }
 
-func (s *LxcSuite) TestShutdownInitCommandsUpstart(c *gc.C) {
-	cmds, err := lxc.ShutdownInitCommands(service.InitSystemUpstart)
+func (s *UserDataSuite) TestShutdownInitCommandsUpstart(c *gc.C) {
+	cmds, err := containerinit.ShutdownInitCommands(service.InitSystemUpstart)
 	c.Assert(err, jc.ErrorIsNil)
 
 	filename := "/etc/init/juju-template-restart.conf"
@@ -176,11 +176,11 @@ post-stop script
 end script
 `[1:]
 	c.Check(cmds, gc.HasLen, 1)
-	coretesting.CheckWriteFileCommand(c, cmds[0], filename, script, nil)
+	testing.CheckWriteFileCommand(c, cmds[0], filename, script, nil)
 }
 
-func (s *LxcSuite) TestShutdownInitCommandsSystemd(c *gc.C) {
-	commands, err := lxc.ShutdownInitCommands(service.InitSystemSystemd)
+func (s *UserDataSuite) TestShutdownInitCommandsSystemd(c *gc.C) {
+	commands, err := containerinit.ShutdownInitCommands(service.InitSystemSystemd)
 	c.Assert(err, jc.ErrorIsNil)
 
 	test := systemd.WriteConfTest{

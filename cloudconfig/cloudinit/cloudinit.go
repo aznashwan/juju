@@ -16,7 +16,7 @@ import (
 	"github.com/juju/utils/shell"
 )
 
-// Config represents a set of cloud-init configuration options.
+// cloudConfig represents a set of cloud-init configuration options.
 type cloudConfig struct {
 	// series is the series for which this cloudConfig is made for.
 	series string
@@ -81,191 +81,191 @@ type cloudConfig struct {
 	attrs map[string]interface{}
 }
 
-// getPackageCommander implements AdvancedPackagingConfig.
+// getPackageCommander is defined on the AdvancedPackagingConfig interface.
 func (cfg *cloudConfig) getPackageCommander() commands.PackageCommander {
 	return cfg.paccmder
 }
 
-// getPackagingConfigurer implements AdvancedPackagingConfig.
+// getPackagingConfigurer is defined on the AdvancedPackagingConfig interface.
 func (cfg *cloudConfig) getPackagingConfigurer() configuration.PackagingConfigurer {
 	return cfg.pacconfer
 }
 
-// GetSeries implements CloudConfig.
+// GetSeries is defined on the CloudConfig interface.
 func (cfg *cloudConfig) GetSeries() string {
 	return cfg.series
 }
 
-// SetAttr implements CloudConfig.
+// SetAttr is defined on the CloudConfig interface.
 func (cfg *cloudConfig) SetAttr(name string, value interface{}) {
 	cfg.attrs[name] = value
 }
 
-// UnsetAttr implements CloudConfig.
+// UnsetAttr is defined on the CloudConfig interface.
 func (cfg *cloudConfig) UnsetAttr(name string) {
 	delete(cfg.attrs, name)
 }
 
-// SetUser implements UserConfig.
+// SetUser is defined on the UserConfig interface.
 func (cfg *cloudConfig) SetUser(user string) {
 	cfg.SetAttr("user", user)
 }
 
-// UnsetUser implements UserConfig.
+// UnsetUser is defined on the UserConfig interface.
 func (cfg *cloudConfig) UnsetUser() {
 	cfg.UnsetAttr("user")
 }
 
-// User implements UserConfig.
+// User is defined on the UserConfig interface.
 func (cfg *cloudConfig) User() string {
 	user, _ := cfg.attrs["user"].(string)
 	return user
 }
 
-// SetSystemUpdate implements SystemUpdateConfig.
+// SetSystemUpdate is defined on the SystemUpdateConfig interface.
 func (cfg *cloudConfig) SetSystemUpdate(yes bool) {
 	cfg.SetAttr("package_update", yes)
 }
 
-// UnsetSystemUpdate implements SystemUpdateConfig.
+// UnsetSystemUpdate is defined on the SystemUpdateConfig interface.
 func (cfg *cloudConfig) UnsetSystemUpdate() {
 	cfg.UnsetAttr("package_update")
 }
 
-// SystemUpdate implements SystemUpdateConfig.
+// SystemUpdate is defined on the SystemUpdateConfig interface.
 func (cfg *cloudConfig) SystemUpdate() bool {
 	update, _ := cfg.attrs["package_update"].(bool)
 	return update
 }
 
-// SetSystemUpgrade implements SystemUpgradeConfig.
+// SetSystemUpgrade is defined on the SystemUpgradeConfig interface.
 func (cfg *cloudConfig) SetSystemUpgrade(yes bool) {
 	cfg.SetAttr("package_upgrade", yes)
 }
 
-// UnsetSystemUpgrade implements SystemUpgradeConfig.
+// UnsetSystemUpgrade is defined on the SystemUpgradeConfig interface.
 func (cfg *cloudConfig) UnsetSystemUpgrade() {
 	cfg.UnsetAttr("package_upgrade")
 }
 
-// SystemUpgrade implements SystemUpgradeConfig.
+// SystemUpgrade is defined on the SystemUpgradeConfig interface.
 func (cfg *cloudConfig) SystemUpgrade() bool {
 	upgrade, _ := cfg.attrs["package_upgrade"].(bool)
 	return upgrade
 }
 
-// AddPackage implements PackagingConfig.
+// AddPackage is defined on the PackagingConfig interface.
 func (cfg *cloudConfig) AddPackage(pack string) {
 	cfg.attrs["packages"] = append(cfg.Packages(), pack)
 }
 
-// RemovePackage implements PackagingConfig.
+// RemovePackage is defined on the PackagingConfig interface.
 func (cfg *cloudConfig) RemovePackage(pack string) {
 	cfg.attrs["packages"] = removeStringFromSlice(cfg.Packages(), pack)
 }
 
-// Packages implements PackagingConfig.
+// Packages is defined on the PackagingConfig interface.
 func (cfg *cloudConfig) Packages() []string {
 	packs, _ := cfg.attrs["packages"].([]string)
 	return packs
 }
 
-// AddRunCmd implements RunCmdsConfig.
+// AddRunCmd is defined on the RunCmdsConfig interface.
 func (cfg *cloudConfig) AddRunCmd(args ...string) {
 	cfg.attrs["runcmd"] = append(cfg.RunCmds(), strings.Join(args, " "))
 }
 
-// AddScripts implements RunCmdsConfig.
+// AddScripts is defined on the RunCmdsConfig interface.
 func (cfg *cloudConfig) AddScripts(script ...string) {
 	for _, line := range script {
 		cfg.AddRunCmd(line)
 	}
 }
 
-// RemoveRunCmd implements RunCmdsConfig.
+// RemoveRunCmd is defined on the RunCmdsConfig interface.
 func (cfg *cloudConfig) RemoveRunCmd(cmd string) {
 	cfg.attrs["runcmd"] = removeStringFromSlice(cfg.RunCmds(), cmd)
 }
 
-// RunCmds implements RunCmdsConfig.
+// RunCmds is defined on the RunCmdsConfig interface.
 func (cfg *cloudConfig) RunCmds() []string {
 	cmds, _ := cfg.attrs["runcmd"].([]string)
 	return cmds
 }
 
-// AddBootCmd implements BootCmdsConfig.
+// AddBootCmd is defined on the BootCmdsConfig interface.
 func (cfg *cloudConfig) AddBootCmd(args ...string) {
 	cfg.attrs["bootcmd"] = append(cfg.BootCmds(), strings.Join(args, " "))
 }
 
-// RemoveBootCmd implements BootCmdsConfig.
+// RemoveBootCmd is defined on the BootCmdsConfig interface.
 func (cfg *cloudConfig) RemoveBootCmd(cmd string) {
 	cfg.attrs["bootcmd"] = removeStringFromSlice(cfg.BootCmds(), cmd)
 }
 
-// BootCmds implements BootCmdsConfig.
+// BootCmds is defined on the BootCmdsConfig interface.
 func (cfg *cloudConfig) BootCmds() []string {
 	cmds, _ := cfg.attrs["bootcmd"].([]string)
 	return cmds
 }
 
-// SetDisableEC2Metadata implements EC2MetadataConfig.
+// SetDisableEC2Metadata is defined on the EC2MetadataConfig interface.
 func (cfg *cloudConfig) SetDisableEC2Metadata(set bool) {
 	cfg.SetAttr("disable_ec2_metadata", set)
 }
 
-// UnsetDisableEC2Metadata implements EC2MetadataConfig.
+// UnsetDisableEC2Metadata is defined on the EC2MetadataConfig interface.
 func (cfg *cloudConfig) UnsetDisableEC2Metadata() {
 	cfg.UnsetAttr("disable_ec2_metadata")
 }
 
-// DisableEC2Metadata implements EC2MetadataConfig.
+// DisableEC2Metadata is defined on the EC2MetadataConfig interface.
 func (cfg *cloudConfig) DisableEC2Metadata() bool {
 	disEC2, _ := cfg.attrs["disable_ec2_metadata"].(bool)
 	return disEC2
 }
 
-// SetFinalMessage implements FinalMessageConfig.
+// SetFinalMessage is defined on the FinalMessageConfig interface.
 func (cfg *cloudConfig) SetFinalMessage(message string) {
 	cfg.SetAttr("final_message", message)
 }
 
-// UnsetFinalMessage implements FinalMessageConfig.
+// UnsetFinalMessage is defined on the FinalMessageConfig interface.
 func (cfg *cloudConfig) UnsetFinalMessage() {
 	cfg.UnsetAttr("final_message")
 }
 
-// FinalMessage implements FinalMessageConfig.
+// FinalMessage is defined on the FinalMessageConfig interface.
 func (cfg *cloudConfig) FinalMessage() string {
 	message, _ := cfg.attrs["final_message"].(string)
 	return message
 }
 
-// SetLocale implements LocaleConfig.
+// SetLocale is defined on the LocaleConfig interface.
 func (cfg *cloudConfig) SetLocale(locale string) {
 	cfg.SetAttr("locale", locale)
 }
 
-// UnsetLocale implements LocaleConfig.
+// UnsetLocale is defined on the LocaleConfig interface.
 func (cfg *cloudConfig) UnsetLocale() {
 	cfg.UnsetAttr("locale")
 }
 
-// Locale implements LocaleConfig.
+// Locale is defined on the LocaleConfig interface.
 func (cfg *cloudConfig) Locale() string {
 	locale, _ := cfg.attrs["locale"].(string)
 	return locale
 }
 
 // AddMount adds takes arguments for installing a mount point in /etc/fstab
-// The options are of the oder and format specific to fstab entries:
+// The options are of the order and format specific to fstab entries:
 // <device> <mountpoint> <filesystem> <options> <backup setting> <fsck priority>
 func (cfg *cloudConfig) AddMount(mount ...string) {
 	mounts, _ := cfg.attrs["mounts"].([][]string)
 	cfg.SetAttr("mounts", append(mounts, mount))
 }
 
-// SetOutput implements OutputConfig.
+// SetOutput is defined on the OutputConfig interface.
 func (cfg *cloudConfig) SetOutput(kind OutputKind, stdout, stderr string) {
 	out, _ := cfg.attrs["output"].(map[string]interface{})
 	if out == nil {
@@ -281,24 +281,21 @@ func (cfg *cloudConfig) SetOutput(kind OutputKind, stdout, stderr string) {
 	cfg.SetAttr("output", out)
 }
 
-// Output implements OutputConfig.
+// Output is defined on the OutputConfig interface.
 func (cfg *cloudConfig) Output(kind OutputKind) (stdout, stderr string) {
 	if out, ok := cfg.attrs["output"].(map[string]interface{}); ok {
 		switch out := out[string(kind)].(type) {
 		case string:
-			//return out, out
 			stdout = out
 		case []string:
-			//return out[0], out[1]
 			stdout, stderr = out[0], out[1]
 		}
 	}
 
-	//return "", ""
 	return stdout, stderr
 }
 
-// AddSSHKey implements SSHKeyConfig
+// AddSSHKey is defined on the SSHKeyConfi interface.
 func (cfg *cloudConfig) AddSSHKey(keyType SSHKeyType, key string) {
 	keys, _ := cfg.attrs["ssh_keys"].(map[SSHKeyType]string)
 	if keys == nil {
@@ -309,7 +306,7 @@ func (cfg *cloudConfig) AddSSHKey(keyType SSHKeyType, key string) {
 	keys[keyType] = key
 }
 
-// AddSSHAuthorizedKeys implements SSHKeysConfig.
+// AddSSHAuthorizedKeys is defined on the SSHKeysConfig interface.
 func (cfg *cloudConfig) AddSSHAuthorizedKeys(rawKeys string) {
 	cfgKeys, _ := cfg.attrs["ssh_authorized_keys"].([]string)
 	keys := ssh.SplitAuthorisedKeys(rawKeys)
@@ -323,45 +320,46 @@ func (cfg *cloudConfig) AddSSHAuthorizedKeys(rawKeys string) {
 	cfg.SetAttr("ssh_authorized_keys", cfgKeys)
 }
 
-// SetDisableRoot implements RootUserConfig.
+// SetDisableRoot is defined on the RootUserConfig interface.
 func (cfg *cloudConfig) SetDisableRoot(disable bool) {
 	cfg.SetAttr("disable_root", disable)
 }
 
-// UnsetDisableRoot implements RootUserConfig.
+// UnsetDisableRoot is defined on the RootUserConfig interface.
 func (cfg *cloudConfig) UnsetDisableRoot() {
 	cfg.UnsetAttr("disable_root")
 }
 
-// DisableRoot implements RootUserConfig.
+// DisableRoot is defined on the RootUserConfig interface.
 func (cfg *cloudConfig) DisableRoot() bool {
 	disable, _ := cfg.attrs["disable_root"].(bool)
 	return disable
 }
 
-// AddRunTextFile implements WrittenFilesConfig.
+// AddRunTextFile is defined on the WrittenFilesConfig interface.
 func (cfg *cloudConfig) AddRunTextFile(filename, contents string, perm uint) {
 	cfg.AddScripts(addFileCmds(filename, []byte(contents), perm, false)...)
 }
 
-// AddBootTextFile implements WrittenFilesConfig.
+// AddBootTextFile is defined on the WrittenFilesConfig interface.
 func (cfg *cloudConfig) AddBootTextFile(filename, contents string, perm uint) {
 	for _, cmd := range addFileCmds(filename, []byte(contents), perm, false) {
 		cfg.AddBootCmd(cmd)
 	}
 }
 
-// AddRunBinaryFile implements WrittenFilesConfig.
+// AddRunBinaryFile is defined on the WrittenFilesConfig interface.
 func (cfg *cloudConfig) AddRunBinaryFile(filename string, data []byte, mode uint) {
 	cfg.AddScripts(addFileCmds(filename, data, mode, true)...)
 }
 
-// ShellRenderer implements RenderConfig.
+// ShellRenderer is defined on the RenderConfig interface.
 func (cfg *cloudConfig) ShellRenderer() shell.Renderer {
 	return cfg.renderer
 }
 
-// RequiresCloudArchiveCloudTools implements AdvancedPackagingConfig.
+// RequiresCloudArchiveCloudTools is defined on the AdvancedPackagingConfig
+// interface.
 func (cfg *cloudConfig) RequiresCloudArchiveCloudTools() bool {
 	return configuration.SeriesRequiresCloudArchiveTools(cfg.series)
 }

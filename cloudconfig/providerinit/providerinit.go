@@ -14,9 +14,7 @@ import (
 	"github.com/juju/juju/cloudconfig/instancecfg"
 )
 
-var (
-	logger = loggo.GetLogger("juju.userdata")
-)
+var logger = loggo.GetLogger("juju.cloudconfig.providerinit")
 
 func configureCloudinit(icfg *instancecfg.InstanceConfig, cloudcfg cloudinit.CloudConfig) (cloudconfig.UserdataConfig, error) {
 	// When bootstrapping, we only want to apt-get update/upgrade

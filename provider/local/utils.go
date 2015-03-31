@@ -4,9 +4,10 @@
 package local
 
 import (
-	"github.com/juju/juju/version"
 	"github.com/juju/utils/packaging/manager"
 	"github.com/juju/utils/proxy"
+
+	"github.com/juju/juju/version"
 )
 
 // isPackageInstalled is a helper function which instantiates a new

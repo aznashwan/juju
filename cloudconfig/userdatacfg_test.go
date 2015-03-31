@@ -35,30 +35,35 @@ import (
 	"github.com/juju/juju/version"
 )
 
-// Use local suite since this file lives in the ec2 package
-// for testing internals.
 type cloudinitSuite struct {
 	testing.BaseSuite
 }
 
 var _ = gc.Suite(&cloudinitSuite{})
 
-var envConstraints = constraints.MustParse("mem=2G")
+var (
+	envConstraints = constraints.MustParse("mem=2G")
+
+	allMachineJobs = []multiwatcher.MachineJob{
+		multiwatcher.JobManageEnviron,
+		multiwatcher.JobHostUnits,
+		multiwatcher.JobManageNetworking,
+	}
+	normalMachineJobs = []multiwatcher.MachineJob{
+		multiwatcher.JobHostUnits,
+	}
+
+	jujuLogDir         = path.Join(logDir, "juju")
+	logDir             = must(paths.LogDir("precise"))
+	dataDir            = must(paths.DataDir("precise"))
+	cloudInitOutputLog = path.Join(logDir, "cloud-init-output.log")
+)
 
 func must(s string, err error) string {
 	if err != nil {
 		panic(err)
 	}
 	return s
-}
-
-var allMachineJobs = []multiwatcher.MachineJob{
-	multiwatcher.JobManageEnviron,
-	multiwatcher.JobHostUnits,
-	multiwatcher.JobManageNetworking,
-}
-var normalMachineJobs = []multiwatcher.MachineJob{
-	multiwatcher.JobHostUnits,
 }
 
 type cloudinitTest struct {
@@ -128,11 +133,6 @@ var stateServingInfo = &params.StateServingInfo{
 	StatePort:    37017,
 	APIPort:      17070,
 }
-
-var jujuLogDir = path.Join(logDir, "juju")
-var logDir = must(paths.LogDir("precise"))
-var dataDir = must(paths.DataDir("precise"))
-var cloudInitOutputLog = path.Join(logDir, "cloud-init-output.log")
 
 // Each test gives a cloudinit config - we check the
 // output to see if it looks correct.
@@ -1167,37 +1167,36 @@ JzPMDvZ0fYS30ukCIA1stlJxpFiCXQuFn0nG+jH4Q52FTv8xxBhrbLOFvHRRAiEA
 -----END RSA PRIVATE KEY-----
 `[1:])
 
-var windowsCloudinitTests = []cloudinitTest{
-	{
-		cfg: instancecfg.InstanceConfig{
-			MachineId:          "10",
-			AgentEnvironment:   map[string]string{agent.ProviderType: "dummy"},
-			Tools:              newSimpleTools("1.2.3-win8-amd64"),
-			Series:             "win8",
-			Bootstrap:          false,
-			Jobs:               normalMachineJobs,
-			MachineNonce:       "FAKE_NONCE",
-			CloudInitOutputLog: cloudInitOutputLog,
-			MongoInfo: &mongo.MongoInfo{
-				Tag:      names.NewMachineTag("10"),
-				Password: "arble",
-				Info: mongo.Info{
-					CACert: "CA CERT\n" + string(serverCert),
-					Addrs:  []string{"state-addr.testing.invalid:12345"},
-				},
+var windowsCloudinitTests = []cloudinitTest{{
+	cfg: instancecfg.InstanceConfig{
+		MachineId:          "10",
+		AgentEnvironment:   map[string]string{agent.ProviderType: "dummy"},
+		Tools:              newSimpleTools("1.2.3-win8-amd64"),
+		Series:             "win8",
+		Bootstrap:          false,
+		Jobs:               normalMachineJobs,
+		MachineNonce:       "FAKE_NONCE",
+		CloudInitOutputLog: cloudInitOutputLog,
+		MongoInfo: &mongo.MongoInfo{
+			Tag:      names.NewMachineTag("10"),
+			Password: "arble",
+			Info: mongo.Info{
+				CACert: "CA CERT\n" + string(serverCert),
+				Addrs:  []string{"state-addr.testing.invalid:12345"},
 			},
-			APIInfo: &api.Info{
-				Addrs:      []string{"state-addr.testing.invalid:54321"},
-				Password:   "bletch",
-				CACert:     "CA CERT\n" + string(serverCert),
-				Tag:        names.NewMachineTag("10"),
-				EnvironTag: testing.EnvironmentTag,
-			},
-			MachineAgentServiceName: "jujud-machine-10",
 		},
-		setEnvConfig:  false,
-		expectScripts: WindowsUserdata,
+		APIInfo: &api.Info{
+			Addrs:      []string{"state-addr.testing.invalid:54321"},
+			Password:   "bletch",
+			CACert:     "CA CERT\n" + string(serverCert),
+			Tag:        names.NewMachineTag("10"),
+			EnvironTag: testing.EnvironmentTag,
+		},
+		MachineAgentServiceName: "jujud-machine-10",
 	},
+	setEnvConfig:  false,
+	expectScripts: WindowsUserdata,
+},
 }
 
 func (*cloudinitSuite) TestWindowsCloudInit(c *gc.C) {

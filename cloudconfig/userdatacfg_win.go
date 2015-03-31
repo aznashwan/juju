@@ -87,7 +87,7 @@ func (w *windowsConfigure) ConfigureJuju() error {
 
 	if w.icfg.Bootstrap == true {
 		// Bootstrap machine not supported on windows
-		return errors.Errorf("Bootstrap node is not supported on Windows.")
+		return errors.Errorf("bootstrap node is not supported on Windows.")
 	}
 
 	machineTag := names.NewMachineTag(w.icfg.MachineId)

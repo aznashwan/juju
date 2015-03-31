@@ -27,6 +27,8 @@ const (
 	NonceFile = "nonce.txt"
 )
 
+// UserdataConfig is the bridge between instancecfg and cloudinit
+// It supports different levels of configuration for instances
 type UserdataConfig interface {
 	// Configure is a convenience function that updates the cloudinit.Config
 	// with appropriate configuration. It will run ConfigureBasic() and

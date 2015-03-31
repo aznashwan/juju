@@ -10,7 +10,7 @@ package cloudinit
 import (
 	"encoding/base64"
 	"fmt"
-	"path"
+	"path/filepath"
 	"regexp"
 
 	"github.com/juju/utils"
@@ -29,8 +29,9 @@ func addPackageSourceCmds(cfg CloudConfig, src packaging.PackageSource) []string
 		cmds = append(cmds, addFileCmds(keyFilePath, []byte(src.Key), 0644, false)...)
 	}
 
-	cmds = append(cmds, addFileCmds(path.Join(configuration.YumSourcesDir, src.Name+".repo"),
-		[]byte(cfg.getPackagingConfigurer().RenderSource(src)), 0644, false)...)
+	repoPath := filepath.Join(configuration.YumSourcesDir, src.Name+".repo")
+	data := []byte(cfg.getPackagingConfigurer().RenderSource(src))
+	cmds = append(cmds, addFileCmds(repoPath, data, 0644, false)...)
 
 	return cmds
 }
@@ -40,8 +41,8 @@ func addPackageSourceCmds(cfg CloudConfig, src packaging.PackageSource) []string
 func addPackagePreferencesCmds(cfg CloudConfig, prefs []packaging.PackagePreferences) []string {
 	cmds := []string{}
 	for _, pref := range prefs {
-		cmds = append(cmds, addFileCmds(pref.Path,
-			[]byte(cfg.getPackagingConfigurer().RenderPreferences(pref)), 0644, false)...)
+		data := []byte(cfg.getPackagingConfigurer().RenderPreferences(pref))
+		cmds = append(cmds, addFileCmds(pref.Path, data, 0644, false)...)
 	}
 
 	return cmds

@@ -33,9 +33,7 @@ import (
 	"github.com/juju/juju/version"
 )
 
-var (
-	logger = loggo.GetLogger("juju.userdata.instanceconfig")
-)
+var logger = loggo.GetLogger("juju.cloudconfig.instancecfg")
 
 // InstanceConfig represents initialization information for a new juju instance.
 type InstanceConfig struct {

@@ -372,9 +372,9 @@ func (env *localEnviron) StartInstance(args environs.StartInstanceParams) (*envi
 	if err := instancecfg.FinishInstanceConfig(args.InstanceConfig, env.config.Config); err != nil {
 		return nil, err
 	}
-	// TODO: evaluate the impact of setting the contstraints on the
+	// TODO: evaluate the impact of setting the constraints on the
 	// instanceConfig for all machines rather than just state server nodes.
-	// This limiation is why the constraints are assigned directly here.
+	// This limitation is why the constraints are assigned directly here.
 	args.InstanceConfig.Constraints = args.Constraints
 	args.InstanceConfig.AgentEnvironment[agent.Namespace] = env.config.namespace()
 	inst, hardware, err := createContainer(env, args)

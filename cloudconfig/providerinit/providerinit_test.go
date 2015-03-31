@@ -4,7 +4,7 @@ package providerinit_test
 
 import (
 	"path"
-	gotesting "testing"
+	stdtesting "testing"
 	"time"
 
 	"github.com/juju/names"
@@ -31,13 +31,12 @@ import (
 	"github.com/juju/juju/version"
 )
 
-func Test(t *gotesting.T) {
+func Test(t *stdtesting.T) {
 	gc.TestingT(t)
 }
 
 // dummySampleConfig returns the dummy sample config without
 // the state server configured.
-// will not run a state server.
 // This function also exists in environs/config_test
 // Maybe place it in dummy and export it?
 func dummySampleConfig() testing.Attrs {

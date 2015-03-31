@@ -3,7 +3,7 @@
 // Licensed under the AGPLv3, see LICENCE file for details.
 
 // The cloudinit package implements a way of creating
-// a cloud-init configuration file.
+// a cloud-init configuration file which is Ubuntu compatible.
 // See https://help.ubuntu.com/community/CloudInit.
 package cloudinit
 
@@ -27,55 +27,55 @@ type UbuntuCloudConfig struct {
 	*cloudConfig
 }
 
-// SetPackageProxy implements PackageProxyConfig.
+// SetPackageProxy is defined on the PackageProxyConfig interface.
 func (cfg *UbuntuCloudConfig) SetPackageProxy(url string) {
 	cfg.SetAttr("apt_proxy", url)
 }
 
-// UnsetPackageProxy implements PackageProxyConfig.
+// UnsetPackageProxy is defined on the PackageProxyConfig interface.
 func (cfg *UbuntuCloudConfig) UnsetPackageProxy() {
 	cfg.UnsetAttr("apt_proxy")
 }
 
-// PackageProxy implements PackageProxyConfig.
+// PackageProxy is defined on the PackageProxyConfig interface.
 func (cfg *UbuntuCloudConfig) PackageProxy() string {
 	proxy, _ := cfg.attrs["apt_proxy"].(string)
 	return proxy
 }
 
-// SetPackageMirror implements PackageMirrorConfig.
+// SetPackageMirror is defined on the PackageMirrorConfig interface.
 func (cfg *UbuntuCloudConfig) SetPackageMirror(url string) {
 	cfg.SetAttr("apt_mirror", url)
 }
 
-// UnsetPackageMirror implements PackageMirrorConfig.
+// UnsetPackageMirror is defined on the PackageMirrorConfig interface.
 func (cfg *UbuntuCloudConfig) UnsetPackageMirror() {
 	cfg.UnsetAttr("apt_mirror")
 }
 
-// PackageMirror implements PackageMirrorConfig.
+// PackageMirror is defined on the PackageMirrorConfig interface.
 func (cfg *UbuntuCloudConfig) PackageMirror() string {
 	mirror, _ := cfg.attrs["apt_mirror"].(string)
 	return mirror
 }
 
-// AddPackageSource implements PackageSourcesConfig.
+// AddPackageSource is defined on the PackageSourcesConfig interface.
 func (cfg *UbuntuCloudConfig) AddPackageSource(src packaging.PackageSource) {
 	cfg.attrs["apt_sources"] = append(cfg.PackageSources(), src)
 }
 
-// PackageSources implements PackageSourcesConfig.
+// PackageSources is defined on the PackageSourcesConfig interface.
 func (cfg *UbuntuCloudConfig) PackageSources() []packaging.PackageSource {
 	srcs, _ := cfg.attrs["apt_sources"].([]packaging.PackageSource)
 	return srcs
 }
 
-// AddPackagePreferences implements PackageSourcesConfig.
+// AddPackagePreferences is defined on the PackageSourcesConfig interface.
 func (cfg *UbuntuCloudConfig) AddPackagePreferences(prefs packaging.PackagePreferences) {
 	cfg.attrs["apt_preferences"] = append(cfg.PackagePreferences(), prefs)
 }
 
-// PackagePreferences implements PackageSourcesConfig.
+// PackagePreferences is defined on the PackageSourcesConfig interface.
 func (cfg *UbuntuCloudConfig) PackagePreferences() []packaging.PackagePreferences {
 	prefs, _ := cfg.attrs["apt_preferences"].([]packaging.PackagePreferences)
 	return prefs
@@ -104,7 +104,7 @@ func (cfg *UbuntuCloudConfig) RenderScript() (string, error) {
 	return renderScriptCommon(cfg)
 }
 
-// AddPackageCommands implements AdvancedPackagingConfig.
+// AddPackageCommands is defined on the AdvancedPackagingConfig interface.
 func (cfg *UbuntuCloudConfig) AddPackageCommands(
 	packageProxySettings proxy.Settings,
 	packageMirror string,
@@ -121,7 +121,8 @@ func (cfg *UbuntuCloudConfig) AddPackageCommands(
 	)
 }
 
-// AddCloudArchiveCloudTools implements AdvancedPackagingConfig.
+// AddCloudArchiveCloudTools is defined on the AdvancedPackagingConfig
+// interface.
 func (cfg *UbuntuCloudConfig) AddCloudArchiveCloudTools() {
 	src, pref := configuration.GetCloudArchiveSource(cfg.series)
 	cfg.AddPackageSource(src)
@@ -164,24 +165,13 @@ func (cfg *UbuntuCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 			}
 		}
 		cmds = append(cmds, LogProgressCmd("Adding apt repository: %s", src.Url))
-		//cmds = append(cmds, "add-apt-repository -y "+utils.ShQuote(src.Url))
 		cmds = append(cmds, cfg.paccmder.AddRepositoryCmd(src.Url))
-		//TODO: Do we keep this?
-		// if src.Prefs != nil {
-		//	path := utils.ShQuote(src.Prefs.Path)
-		//	contents := utils.ShQuote(src.Prefs.FileContents())
-		//	cmds = append(cmds, "install -D -m 644 /dev/null "+path)
-		//	cmds = append(cmds, `printf '%s\n' `+contents+` > `+path)
-		//}
 	}
 
 	for _, prefs := range cfg.PackagePreferences() {
 		cfg.AddRunTextFile(prefs.Path, cfg.pacconfer.RenderPreferences(prefs), 0644)
 	}
 
-	// Define the "apt_get_loop" function, and wrap apt-get with it.
-	// TODO: If we do this hack here we can't use the package manager anymore
-	// Maybe wrap it inside packageManager?
 	cmds = append(cmds, configuration.PackageManagerLoopFunction)
 
 	looper := "package_manager_loop "
@@ -253,7 +243,7 @@ done`
 	}
 }
 
-// updatePackages implements AdvancedPackagingConfig.
+// updatePackages is defined on the AdvancedPackagingConfig interface.
 func (cfg *UbuntuCloudConfig) updatePackages() {
 	packages := []string{
 		"curl",

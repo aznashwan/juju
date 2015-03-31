@@ -24,11 +24,6 @@ func addPackageCommandsCommon(
 	addUpgradeScripts bool,
 	series string,
 ) {
-	// Check preconditions
-	if cfg == nil {
-		panic("AddPackageCommands received nil CloudConfig")
-	}
-
 	// Set the package mirror.
 	cfg.SetPackageMirror(packageMirror)
 
@@ -57,10 +52,6 @@ func addPackageCommandsCommon(
 // renderScriptCommon is a helper function which generates a bash script that
 // applies all the settings given by the provided CloudConfig when run.
 func renderScriptCommon(cfg CloudConfig) (string, error) {
-	if cfg == nil {
-		panic("cfg is nil")
-	}
-
 	// TODO(axw): 2013-08-23 bug 1215777
 	// Carry out configuration for ssh-keys-per-user,
 	// machine-updates-authkeys, using cloud-init config.

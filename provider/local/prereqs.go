@@ -9,9 +9,10 @@ import (
 	"os/exec"
 	"runtime"
 
+	"github.com/juju/utils"
+
 	"github.com/juju/juju/container/kvm"
 	"github.com/juju/juju/instance"
-	"github.com/juju/utils"
 )
 
 var notLinuxError = errors.New("The local provider is currently only available for Linux")

@@ -82,7 +82,7 @@ func (s *configureSuite) getCloudConfig(c *gc.C, stateServer bool, vers version.
 	return cloudcfg
 }
 
-var allSeries = [...]string{"precise", "quantal", "raring", "saucy"}
+var allSeries = []string{"precise", "quantal", "raring", "saucy"}
 
 func checkIff(checker gc.Checker, condition bool) gc.Checker {
 	if condition {

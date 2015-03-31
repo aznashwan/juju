@@ -3,7 +3,7 @@
 // Licensed under the AGPLv3, see LICENCE file for details.
 
 // The cloudinit package implements a way of creating
-// a cloud-init configuration file.
+// a cloud-init configuration file which is CentOS compatible.
 // See https://help.ubuntu.com/community/CloudInit.
 package cloudinit
 
@@ -24,7 +24,7 @@ type CentOSCloudConfig struct {
 	*cloudConfig
 }
 
-// SetPackageProxy implements PackageProxyConfig.
+// SetPackageProxy is defined on the PackageProxyConfig interface.
 func (cfg *CentOSCloudConfig) SetPackageProxy(url string) {
 	cfg.SetAttr("package_proxy", url)
 }
@@ -35,18 +35,18 @@ func addPackageProxyCmd(cfg CloudConfig, url string) string {
 	return fmt.Sprintf("/bin/echo 'proxy=%s' >> /etc/yum.conf", url)
 }
 
-// UnsetPackageProxy implements PackageProxyConfig.
+// UnsetPackageProxy is defined on the PackageProxyConfig interface.
 func (cfg *CentOSCloudConfig) UnsetPackageProxy() {
 	cfg.UnsetAttr("package_proxy")
 }
 
-// PackageProxy implements PackageProxyConfig.
+// PackageProxy is defined on the PackageProxyConfig interface.
 func (cfg *CentOSCloudConfig) PackageProxy() string {
 	proxy, _ := cfg.attrs["package_proxy"].(string)
 	return proxy
 }
 
-// SetPackageMirror implements PackageMirrorConfig.
+// SetPackageMirror is defined on the PackageMirrorConfig interface.
 func (cfg *CentOSCloudConfig) SetPackageMirror(url string) {
 	cfg.SetAttr("package_mirror", url)
 }
@@ -57,41 +57,41 @@ func addPackageMirrorCmd(cfg CloudConfig, url string) string {
 	return fmt.Sprintf(configuration.ReplaceCentOSMirror, url)
 }
 
-// UnsetPackageMirror implements PackageMirrorConfig.
+// UnsetPackageMirror is defined on the PackageMirrorConfig interface.
 func (cfg *CentOSCloudConfig) UnsetPackageMirror() {
 	cfg.UnsetAttr("package_mirror")
 }
 
-// PackageMirror implements PackageMirrorConfig.
+// PackageMirror is defined on the PackageMirrorConfig interface.
 func (cfg *CentOSCloudConfig) PackageMirror() string {
 	mirror, _ := cfg.attrs["package_mirror"].(string)
 	return mirror
 }
 
-// AddPackageSource implements PackageSourcesConfig.
+// AddPackageSource is defined on the PackageSourcesConfig interface.
 func (cfg *CentOSCloudConfig) AddPackageSource(src packaging.PackageSource) {
 	cfg.attrs["package_sources"] = append(cfg.PackageSources(), src)
 }
 
-// PackageSources implements PackageSourcesConfig.
+// PackageSources is defined on the PackageSourcesConfig interface.
 func (cfg *CentOSCloudConfig) PackageSources() []packaging.PackageSource {
 	sources, _ := cfg.attrs["package_sources"].([]packaging.PackageSource)
 	return sources
 }
 
-// AddPackagePreferences implements PackageSourcesConfig.
+// AddPackagePreferences is defined on the PackageSourcesConfig interface.
 func (cfg *CentOSCloudConfig) AddPackagePreferences(prefs packaging.PackagePreferences) {
 	// TODO (aznashwan): research a way of using yum-priorities in the
 	// context of a single package and implement the appropriate runcmds.
 }
 
-// PackagePreferences implements PackageSourcesConfig.
+// PackagePreferences is defined on the PackageSourcesConfig interface.
 func (cfg *CentOSCloudConfig) PackagePreferences() []packaging.PackagePreferences {
 	// TODO (aznashwan): add this when priorities in yum make sense.
 	return []packaging.PackagePreferences{}
 }
 
-// Render implements the Renderer interface.
+// Render is defined on the the Renderer interface.
 func (cfg *CentOSCloudConfig) RenderYAML() ([]byte, error) {
 	// check for package proxy setting and add commands:
 	var proxy string
@@ -130,11 +130,10 @@ func (cfg *CentOSCloudConfig) RenderYAML() ([]byte, error) {
 }
 
 func (cfg *CentOSCloudConfig) RenderScript() (string, error) {
-	//TODO: &cfg?
 	return renderScriptCommon(cfg)
 }
 
-// AddCloudArchiveCloudTools implements AdvancedPackagingConfig.
+// AddCloudArchiveCloudTools is defined on the AdvancedPackagingConfig.
 func (cfg *CentOSCloudConfig) AddCloudArchiveCloudTools() {
 	src, pref := configuration.GetCloudArchiveSource(cfg.series)
 	cfg.AddPackageSource(src)
@@ -146,34 +145,18 @@ func (cfg *CentOSCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 
 	if newMirror := cfg.PackageMirror(); newMirror != "" {
 		cmds = append(cmds, LogProgressCmd("Changing package mirror does not yet work on CentOS"))
-		// TODO(centos): This should be done in a further PR once we add more mirror
-		// options values to environs.Config
+		// TODO(bogdanteleaga, aznashwan): This should be done in a further PR
+		// once we add more mirrror options values to environs.Config
 	}
 
 	for _, src := range cfg.PackageSources() {
 		// TODO(centos): Keys are usually offered by repositories, and you need to
 		// accept them. Check how this can be done non interactively.
-		//if !strings.HasPrefix(src.Url, "ppa:") {
-		//if src.Key != "" {
-		//key := utils.ShQuote(src.Key)
-		//cmd := fmt.Sprintf("printf '%%s\\n' %s | apt-key add -", key)
-		//cmds = append(cmds, cmd)
-		//}
-		//}
 		cmds = append(cmds, LogProgressCmd("Adding yum repository: %s", src.Url))
 		cmds = append(cmds, cfg.paccmder.AddRepositoryCmd(src.Url))
-		//TODO: Package prefs on CentOS?
-		// if src.Prefs != nil {
-		//	path := utils.ShQuote(src.Prefs.Path)
-		//	contents := utils.ShQuote(src.Prefs.FileContents())
-		//	cmds = append(cmds, "install -D -m 644 /dev/null "+path)
-		//	cmds = append(cmds, `printf '%s\n' `+contents+` > `+path)
-		//}
 	}
 
-	//TODO(centos): Don't forget about PackagePreferences on CentOS
-	//for _, pref := range cfg.PackagePreferences() {
-	//}
+	//TODO(aznashwan): Don't forget about PackagePreferences on CentOS
 
 	// Define the "package_get_loop" function
 	cmds = append(cmds, configuration.PackageManagerLoopFunction)
@@ -195,7 +178,7 @@ func (cfg *CentOSCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 	return cmds, nil
 }
 
-// AddPackageCommands implements AdvancedPackagingConfig.
+// AddPackageCommands is defined on the AdvancedPackagingConfig interface.
 func (cfg *CentOSCloudConfig) AddPackageCommands(
 	packageProxySettings proxy.Settings,
 	packageMirror string,
@@ -212,7 +195,7 @@ func (cfg *CentOSCloudConfig) AddPackageCommands(
 	)
 }
 
-// updatePackages implements AdvancedPackagingConfig.
+// updatePackages is defined on the AdvancedPackagingConfig interface.
 func (cfg *CentOSCloudConfig) updatePackages() {
 	packages := []string{
 		"curl",

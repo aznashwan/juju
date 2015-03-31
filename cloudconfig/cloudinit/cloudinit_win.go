@@ -3,7 +3,7 @@
 // Licensed under the AGPLv3, see LICENCE file for details.
 
 // The cloudinit package implements a way of creating
-// a cloud-init configuration file.
+// a cloud-init configuration file which is Windows compatible.
 // See https://help.ubuntu.com/community/CloudInit.
 package cloudinit
 
@@ -20,64 +20,64 @@ type WindowsCloudConfig struct {
 	*cloudConfig
 }
 
-// SetPackageProxy implements PackageProxyConfig.
+// SetPackageProxy is defined on the PackageProxyConfig interface.
 func (cfg *WindowsCloudConfig) SetPackageProxy(url string) {
 	return
 }
 
-// UnsetPackageProxy implements PackageProxyConfig.
+// UnsetPackageProxy is defined on the PackageProxyConfig interface.
 func (cfg *WindowsCloudConfig) UnsetPackageProxy() {
 	return
 }
 
-// PackageProxy implements PackageProxyConfig.
+// PackageProxy is defined on the PackageProxyConfig interface.
 func (cfg *WindowsCloudConfig) PackageProxy() string {
 	return ""
 }
 
-// SetPackageMirror implements PackageMirrorConfig.
+// SetPackageMirror is defined on the PackageMirrorConfig interface.
 func (cfg *WindowsCloudConfig) SetPackageMirror(url string) {
 	return
 }
 
-// UnsetPackageMirror implements PackageMirrorConfig.
+// UnsetPackageMirror is defined on the PackageMirrorConfig interface.
 func (cfg *WindowsCloudConfig) UnsetPackageMirror() {
 	return
 }
 
-// PackageMirror implements PackageMirrorConfig.
+// PackageMirror is defined on the PackageMirrorConfig interface.
 func (cfg *WindowsCloudConfig) PackageMirror() string {
 	return ""
 }
 
-// AddPackageSource implements PackageSourcesConfig.
+// AddPackageSource is defined on the PackageSourcesConfig interface.
 func (cfg *WindowsCloudConfig) AddPackageSource(src packaging.PackageSource) {
 	return
 }
 
-// PackageSources implements PackageSourcesConfig.
+// PackageSources is defined on the PackageSourcesConfig interface.
 func (cfg *WindowsCloudConfig) PackageSources() []packaging.PackageSource {
 	// NOTE: this should not ever get called, so it is safe to return nil here:
 	return nil
 }
 
-// AddPackagePreferences implements PackageSourcesConfig.
+// AddPackagePreferences is defined on the PackageSourcesConfig interface.
 func (cfg *WindowsCloudConfig) AddPackagePreferences(prefs packaging.PackagePreferences) {
 	return
 }
 
-// PackagePreferences implements PackageSourcesConfig.
+// PackagePreferences is defined on the PackageSourcesConfig interface.
 func (cfg *WindowsCloudConfig) PackagePreferences() []packaging.PackagePreferences {
 	// NOTE: this should not ever get called, so it is safe to return nil here:
 	return nil
 }
 
-// RenderYAML implements RenderConfig.
+// RenderYAML is defined on the RenderConfig interface.
 func (cfg *WindowsCloudConfig) RenderYAML() ([]byte, error) {
 	return cfg.renderWindows()
 }
 
-// RenderScript implements RenderConfig.
+// RenderScript is defined on the RenderConfig interface.
 func (cfg *WindowsCloudConfig) RenderScript() (string, error) {
 	// NOTE: This shouldn't really be called on windows as it's used only for
 	// initialization via ssh or on local providers.
@@ -89,7 +89,7 @@ func (cfg *WindowsCloudConfig) RenderScript() (string, error) {
 	return string(script), err
 }
 
-// getCommandsForAddingPackages implements RenderConfig..
+// getCommandsForAddingPackages is defined on the RenderConfig interface.
 func (cfg *WindowsCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 	return nil, nil
 }
@@ -105,32 +105,32 @@ func (cfg *WindowsCloudConfig) renderWindows() ([]byte, error) {
 	for _, cmd := range winCmds {
 		script = append(script, newline...)
 		script = append(script, cmd...)
-
 	}
 	return script, nil
 }
 
-// AddPackageCommands implements AdvancedPackagingConfig.
+// AddPackageCommands is defined on the AdvancedPackagingConfig interface.
 func (cfg *WindowsCloudConfig) AddPackageCommands(
 	aptProxySettings proxy.Settings,
 	aptMirror string,
 	addUpdateScripts bool,
 	addUpgradeScripts bool,
 ) {
-	// Who knows; one day chocolaty might be here...
 	return
 }
 
-// AddCloudArchiveCloudTools implements AdvancedPackagingConfig.
+// AddCloudArchiveCloudTools is defined on the AdvancedPackagingConfig
+// interface.
 func (cfg *WindowsCloudConfig) AddCloudArchiveCloudTools() {
+	return
 }
 
-// updatePackages implements AdvancedPackagingConfig.
+// updatePackages is defined on the AdvancedPackagingConfig interface.
 func (cfg *WindowsCloudConfig) updatePackages() {
 	return
 }
 
-// updateProxySettings implements AdvancedPackagingConfig.
+// updateProxySettings is defined on the AdvancedPackagingConfig interface.
 func (cfg *WindowsCloudConfig) updateProxySettings(proxy.Settings) {
 	return
 }

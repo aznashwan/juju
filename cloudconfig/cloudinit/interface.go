@@ -72,7 +72,7 @@ type UserConfig interface {
 
 // SystemUpdateConfig is the interface for managing all system update options.
 type SystemUpdateConfig interface {
-	// SetSystemUpdate sets wether the system should refresh the local package
+	// SetSystemUpdate sets whether the system should refresh the local package
 	// database on first boot.
 	// NOTE: This option is active in cloudinit by default and must be
 	// explicitly set to false if it is not desired.
@@ -156,7 +156,7 @@ type PackagingConfig interface {
 	AddPackage(string)
 
 	// RemovePackage removes a package from the list of to be installed packages
-	// It will not return an error if the package has not been previously added.
+	// If the package has not been previously installed, no error occurs.
 	RemovePackage(string)
 
 	// Packages returns a list of all packages that will be installed.
@@ -253,7 +253,7 @@ type LocaleConfig interface {
 // DeviceMountConfig is the interface for all device mounting settings.
 type DeviceMountConfig interface {
 	// AddMount adds takes arguments for installing a mount point in /etc/fstab
-	// The options are of the oder and format specific to fstab entries:
+	// The options are of the order and format specific to fstab entries:
 	// <device> <mountpoint> <filesystem> <options> <backup setting> <fsck priority>
 	AddMount(...string)
 }
@@ -364,12 +364,11 @@ type AdvancedPackagingConfig interface {
 	// distribution.
 	updatePackages()
 
-	//TODO: this might be the same as the exported proxy setting up above, need
+	//TODO(bogdanteleaga): this might be the same as the exported proxy setting up above, need
 	//to investigate how they're used
-	// If we don't really find anything just leave both
 	updateProxySettings(proxy.Settings)
 
-	// RequiresCloudArchiveCloudTools determines wether the cloudconfig
+	// RequiresCloudArchiveCloudTools determines whether the cloudconfig
 	// requires the configuration of the cloud archive depending on its series.
 	RequiresCloudArchiveCloudTools() bool
 
@@ -417,7 +416,7 @@ func New(series string) (CloudConfig, error) {
 			},
 		}, nil
 	default:
-		return nil, errors.NotFoundf(" no cloudconfig available for series: " + series)
+		return nil, errors.NotFoundf("cloudconfig for series %q", series)
 	}
 }
 

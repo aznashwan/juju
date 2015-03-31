@@ -159,11 +159,13 @@ func (s *UserDataSuite) TestShutdownInitCommandsUpstart(c *gc.C) {
 description "juju shutdown job"
 author "Juju Team <juju@lists.ubuntu.com>"
 start on stopped cloud-final
+
 script
   /bin/cat > /etc/network/interfaces << EOC
 # loopback interface
 auto lo
 iface lo inet loopback
+
 # primary interface
 auto eth0
 iface eth0 inet dhcp
@@ -171,6 +173,7 @@ EOC
   /bin/rm -fr /var/lib/dhcp/dhclient* /var/log/cloud-init*.log
   /sbin/shutdown -h now
 end script
+
 post-stop script
   rm /etc/init/juju-template-restart.conf
 end script
@@ -194,6 +197,7 @@ After=network.target
 After=systemd-user-sessions.service
 After=cloud-final
 Conflicts=cloud-final
+
 [Service]
 ExecStart='/var/lib/juju/init/juju-template-restart/exec-start.sh'
 ExecStopPost=/bin/systemctl disable juju-template-restart.service
@@ -203,6 +207,7 @@ ExecStopPost=/bin/systemctl disable juju-template-restart.service
 # loopback interface
 auto lo
 iface lo inet loopback
+
 # primary interface
 auto eth0
 iface eth0 inet dhcp

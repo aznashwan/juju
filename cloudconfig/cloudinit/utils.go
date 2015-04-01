@@ -15,7 +15,7 @@ import (
 
 	"github.com/juju/utils"
 	"github.com/juju/utils/packaging"
-	"github.com/juju/utils/packaging/configuration"
+	"github.com/juju/utils/packaging/config"
 )
 
 // addPackageSourceCmds is a helper function that returns the corresponding
@@ -25,12 +25,13 @@ func addPackageSourceCmds(cfg CloudConfig, src packaging.PackageSource) []string
 
 	// if keyfile is required, add it first
 	if src.Key != "" {
-		keyFilePath := configuration.YumKeyfileDir + src.KeyFileName()
+		keyFilePath := config.YumKeyfileDir + src.KeyFileName()
 		cmds = append(cmds, addFileCmds(keyFilePath, []byte(src.Key), 0644, false)...)
 	}
 
-	repoPath := filepath.Join(configuration.YumSourcesDir, src.Name+".repo")
-	data := []byte(cfg.getPackagingConfigurer().RenderSource(src))
+	repoPath := filepath.Join(config.YumSourcesDir, src.Name+".repo")
+	sourceFile, _ := cfg.getPackagingConfigurer().RenderSource(src)
+	data := []byte(sourceFile)
 	cmds = append(cmds, addFileCmds(repoPath, data, 0644, false)...)
 
 	return cmds
@@ -41,7 +42,8 @@ func addPackageSourceCmds(cfg CloudConfig, src packaging.PackageSource) []string
 func addPackagePreferencesCmds(cfg CloudConfig, prefs []packaging.PackagePreferences) []string {
 	cmds := []string{}
 	for _, pref := range prefs {
-		data := []byte(cfg.getPackagingConfigurer().RenderPreferences(pref))
+		prefFile, _ := cfg.getPackagingConfigurer().RenderPreferences(pref)
+		data := []byte(prefFile)
 		cmds = append(cmds, addFileCmds(pref.Path, data, 0644, false)...)
 	}
 

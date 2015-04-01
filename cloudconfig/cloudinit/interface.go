@@ -11,7 +11,7 @@ import (
 	"github.com/juju/errors"
 	"github.com/juju/utils/packaging"
 	"github.com/juju/utils/packaging/commands"
-	"github.com/juju/utils/packaging/configuration"
+	"github.com/juju/utils/packaging/config"
 	"github.com/juju/utils/proxy"
 	"github.com/juju/utils/shell"
 
@@ -358,7 +358,7 @@ type AdvancedPackagingConfig interface {
 	getPackageCommander() commands.PackageCommander
 
 	// getPackagingConfigurer returns the PackagingConfigurer of the CloudConfig.
-	getPackagingConfigurer() configuration.PackagingConfigurer
+	getPackagingConfigurer() config.PackagingConfigurer
 
 	// This is a helper to add the proper packages that we want to update per
 	// distribution.
@@ -399,7 +399,7 @@ func New(series string) (CloudConfig, error) {
 			&cloudConfig{
 				series:    series,
 				paccmder:  commands.NewAptPackageCommander(),
-				pacconfer: configuration.NewAptPackagingConfigurer(series),
+				pacconfer: config.NewAptPackagingConfigurer(series),
 				renderer:  renderer,
 				attrs:     make(map[string]interface{}),
 			},
@@ -410,7 +410,7 @@ func New(series string) (CloudConfig, error) {
 			&cloudConfig{
 				series:    series,
 				paccmder:  commands.NewYumPackageCommander(),
-				pacconfer: configuration.NewYumPackagingConfigurer(series),
+				pacconfer: config.NewYumPackagingConfigurer(series),
 				renderer:  renderer,
 				attrs:     make(map[string]interface{}),
 			},

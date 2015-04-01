@@ -12,7 +12,7 @@ import (
 
 	"github.com/juju/juju/utils/ssh"
 	"github.com/juju/utils/packaging/commands"
-	"github.com/juju/utils/packaging/configuration"
+	"github.com/juju/utils/packaging/config"
 	"github.com/juju/utils/shell"
 )
 
@@ -25,7 +25,7 @@ type cloudConfig struct {
 	paccmder commands.PackageCommander
 
 	// pacconfer is the PackagingConfigurer for this cloudConfig.
-	pacconfer configuration.PackagingConfigurer
+	pacconfer config.PackagingConfigurer
 
 	// renderer is the shell Renderer for this cloudConfig.
 	renderer shell.Renderer
@@ -87,7 +87,7 @@ func (cfg *cloudConfig) getPackageCommander() commands.PackageCommander {
 }
 
 // getPackagingConfigurer is defined on the AdvancedPackagingConfig interface.
-func (cfg *cloudConfig) getPackagingConfigurer() configuration.PackagingConfigurer {
+func (cfg *cloudConfig) getPackagingConfigurer() config.PackagingConfigurer {
 	return cfg.pacconfer
 }
 
@@ -361,5 +361,5 @@ func (cfg *cloudConfig) ShellRenderer() shell.Renderer {
 // RequiresCloudArchiveCloudTools is defined on the AdvancedPackagingConfig
 // interface.
 func (cfg *cloudConfig) RequiresCloudArchiveCloudTools() bool {
-	return configuration.SeriesRequiresCloudArchiveTools(cfg.series)
+	return config.SeriesRequiresCloudArchiveTools(cfg.series)
 }

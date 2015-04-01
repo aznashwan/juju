@@ -10,7 +10,7 @@ package cloudinit
 import (
 	"strings"
 
-	"github.com/juju/utils/packaging/configuration"
+	"github.com/juju/utils/packaging/config"
 	"github.com/juju/utils/proxy"
 )
 
@@ -30,7 +30,7 @@ func addPackageCommandsCommon(
 	// For LTS series which need support for the cloud-tools archive,
 	// we need to enable package-list update regardless of the environ
 	// setting, otherwise bootstrap or provisioning will fail.
-	if configuration.SeriesRequiresCloudArchiveTools(series) && !addUpdateScripts {
+	if config.SeriesRequiresCloudArchiveTools(series) && !addUpdateScripts {
 		addUpdateScripts = true
 	}
 

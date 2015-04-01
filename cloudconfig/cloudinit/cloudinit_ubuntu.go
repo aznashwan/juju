@@ -14,7 +14,7 @@ import (
 	"github.com/juju/errors"
 	"github.com/juju/utils"
 	"github.com/juju/utils/packaging"
-	"github.com/juju/utils/packaging/configuration"
+	"github.com/juju/utils/packaging/config"
 	"github.com/juju/utils/proxy"
 	"gopkg.in/yaml.v1"
 )
@@ -85,7 +85,11 @@ func (cfg *UbuntuCloudConfig) RenderYAML() ([]byte, error) {
 	// add the preferences first:
 	prefs := cfg.PackagePreferences()
 	for _, pref := range prefs {
-		cfg.AddBootTextFile(pref.Path, cfg.pacconfer.RenderPreferences(pref), 0644)
+		prefFile, err := cfg.pacconfer.RenderPreferences(pref)
+		if err != nil {
+			return nil, err
+		}
+		cfg.AddBootTextFile(pref.Path, prefFile, 0644)
 	}
 	cfg.UnsetAttr("apt_preferences")
 
@@ -124,7 +128,7 @@ func (cfg *UbuntuCloudConfig) AddPackageCommands(
 // AddCloudArchiveCloudTools is defined on the AdvancedPackagingConfig
 // interface.
 func (cfg *UbuntuCloudConfig) AddCloudArchiveCloudTools() {
-	src, pref := configuration.GetCloudArchiveSource(cfg.series)
+	src, pref := config.GetCloudArchiveSource(cfg.series)
 	cfg.AddPackageSource(src)
 	cfg.AddPackagePreferences(pref)
 }
@@ -141,9 +145,9 @@ func (cfg *UbuntuCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 	// If a mirror is specified, rewrite sources.list and rename cached index files.
 	if newMirror := cfg.PackageMirror(); newMirror != "" {
 		cmds = append(cmds, LogProgressCmd("Changing apt mirror to "+newMirror))
-		cmds = append(cmds, "old_mirror=$("+configuration.ExtractAptSource+")")
+		cmds = append(cmds, "old_mirror=$("+config.ExtractAptSource+")")
 		cmds = append(cmds, "new_mirror="+newMirror)
-		cmds = append(cmds, `sed -i s,$old_mirror,$new_mirror, `+configuration.AptSourcesFile)
+		cmds = append(cmds, `sed -i s,$old_mirror,$new_mirror, `+config.AptSourcesFile)
 		cmds = append(cmds, renameAptListFilesCommands("$new_mirror", "$old_mirror")...)
 	}
 
@@ -154,22 +158,26 @@ func (cfg *UbuntuCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 	}
 	for _, src := range cfg.PackageSources() {
 		// PPA keys are obtained by add-apt-repository, from launchpad.
-		if !strings.HasPrefix(src.Url, "ppa:") {
+		if !strings.HasPrefix(src.URL, "ppa:") {
 			if src.Key != "" {
 				key := utils.ShQuote(src.Key)
 				cmd := fmt.Sprintf("printf '%%s\\n' %s | apt-key add -", key)
 				cmds = append(cmds, cmd)
 			}
 		}
-		cmds = append(cmds, LogProgressCmd("Adding apt repository: %s", src.Url))
-		cmds = append(cmds, cfg.paccmder.AddRepositoryCmd(src.Url))
+		cmds = append(cmds, LogProgressCmd("Adding apt repository: %s", src.URL))
+		cmds = append(cmds, cfg.paccmder.AddRepositoryCmd(src.URL))
 	}
 
 	for _, prefs := range cfg.PackagePreferences() {
-		cfg.AddRunTextFile(prefs.Path, cfg.pacconfer.RenderPreferences(prefs), 0644)
+		prefFile, err := cfg.pacconfer.RenderPreferences(prefs)
+		if err != nil {
+			return nil, err
+		}
+		cfg.AddRunTextFile(prefs.Path, prefFile, 0644)
 	}
 
-	cmds = append(cmds, configuration.PackageManagerLoopFunction)
+	cmds = append(cmds, config.PackageManagerLoopFunction)
 
 	looper := "package_manager_loop "
 
@@ -224,8 +232,8 @@ func (cfg *UbuntuCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 // and returns a sequence of commands that will rename the files
 // in aptListsDirectory.
 func renameAptListFilesCommands(newMirror, oldMirror string) []string {
-	oldPrefix := "old_prefix=" + configuration.AptListsDirectory + "/$(echo " + oldMirror + " | " + configuration.AptSourceListPrefix + ")"
-	newPrefix := "new_prefix=" + configuration.AptListsDirectory + "/$(echo " + newMirror + " | " + configuration.AptSourceListPrefix + ")"
+	oldPrefix := "old_prefix=" + config.AptListsDirectory + "/$(echo " + oldMirror + " | " + config.AptSourceListPrefix + ")"
+	newPrefix := "new_prefix=" + config.AptListsDirectory + "/$(echo " + newMirror + " | " + config.AptSourceListPrefix + ")"
 	renameFiles := `
 for old in ${old_prefix}_*; do
     new=$(echo $old | sed s,^$old_prefix,$new_prefix,)
@@ -278,7 +286,7 @@ func (cfg *UbuntuCloudConfig) updatePackages() {
 func (cfg *UbuntuCloudConfig) updateProxySettings(proxySettings proxy.Settings) {
 	// Write out the apt proxy settings
 	if (proxySettings != proxy.Settings{}) {
-		filename := configuration.AptProxyConfigFile
+		filename := config.AptProxyConfigFile
 		cfg.AddBootCmd(fmt.Sprintf(
 			`printf '%%s\n' %s > %s`,
 			shquote(cfg.paccmder.ProxyConfigContents(proxySettings)),

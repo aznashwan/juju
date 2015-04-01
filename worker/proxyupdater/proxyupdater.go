@@ -12,7 +12,7 @@ import (
 	"github.com/juju/utils"
 	"github.com/juju/utils/exec"
 	"github.com/juju/utils/packaging/commands"
-	"github.com/juju/utils/packaging/configuration"
+	"github.com/juju/utils/packaging/config"
 	proxyutils "github.com/juju/utils/proxy"
 
 	"github.com/juju/juju/api/environment"
@@ -173,7 +173,7 @@ func (w *proxyWorker) handleAptProxyValues(aptSettings proxyutils.Settings) {
 
 		// Always finish with a new line.
 		content := paccmder.ProxyConfigContents(w.aptProxy) + "\n"
-		err := ioutil.WriteFile(configuration.AptProxyConfigFile, []byte(content), 0644)
+		err := ioutil.WriteFile(config.AptProxyConfigFile, []byte(content), 0644)
 		if err != nil {
 			// It isn't really fatal, but we should record it.
 			logger.Errorf("error writing apt proxy config file: %v", err)

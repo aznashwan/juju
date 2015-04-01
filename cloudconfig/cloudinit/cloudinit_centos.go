@@ -11,7 +11,7 @@ import (
 	"fmt"
 
 	"github.com/juju/utils/packaging"
-	"github.com/juju/utils/packaging/configuration"
+	"github.com/juju/utils/packaging/config"
 	"github.com/juju/utils/proxy"
 	"gopkg.in/yaml.v1"
 )
@@ -54,7 +54,7 @@ func (cfg *CentOSCloudConfig) SetPackageMirror(url string) {
 // addPackageMirrorCmd is a helper function that returns the corresponding runcmds
 // to apply the package mirror settings on a CentOS machine.
 func addPackageMirrorCmd(cfg CloudConfig, url string) string {
-	return fmt.Sprintf(configuration.ReplaceCentOSMirror, url)
+	return fmt.Sprintf(config.ReplaceCentOSMirror, url)
 }
 
 // UnsetPackageMirror is defined on the PackageMirrorConfig interface.
@@ -135,7 +135,7 @@ func (cfg *CentOSCloudConfig) RenderScript() (string, error) {
 
 // AddCloudArchiveCloudTools is defined on the AdvancedPackagingConfig.
 func (cfg *CentOSCloudConfig) AddCloudArchiveCloudTools() {
-	src, pref := configuration.GetCloudArchiveSource(cfg.series)
+	src, pref := config.GetCloudArchiveSource(cfg.series)
 	cfg.AddPackageSource(src)
 	cfg.AddPackagePreferences(pref)
 }
@@ -153,14 +153,14 @@ func (cfg *CentOSCloudConfig) getCommandsForAddingPackages() ([]string, error) {
 	for _, src := range cfg.PackageSources() {
 		// TODO(bogdanteleaga. aznashwan): Keys are usually offered by repositories, and you need to
 		// accept them. Check how this can be done non interactively.
-		cmds = append(cmds, LogProgressCmd("Adding yum repository: %s", src.Url))
-		cmds = append(cmds, cfg.paccmder.AddRepositoryCmd(src.Url))
+		cmds = append(cmds, LogProgressCmd("Adding yum repository: %s", src.URL))
+		cmds = append(cmds, cfg.paccmder.AddRepositoryCmd(src.URL))
 	}
 
 	// TODO(bogdanteleaga. aznashwan): Research what else needs to be done here
 
 	// Define the "package_get_loop" function
-	cmds = append(cmds, configuration.PackageManagerLoopFunction)
+	cmds = append(cmds, config.PackageManagerLoopFunction)
 
 	if cfg.SystemUpdate() {
 		cmds = append(cmds, LogProgressCmd("Running yum update"))

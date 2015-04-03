@@ -383,8 +383,11 @@ func (s *MongoSuite) TestQuantalAptAddRepo(c *gc.C) {
 	// (and that if it fails, we return the error)
 	s.PatchValue(&version.Current.Series, "quantal")
 	err := mongo.EnsureServer(makeEnsureServerParams(dir, ""))
-	c.Assert(err, gc.ErrorMatches, "cannot install mongod: repository addition failed: exit status 1.*")
+	c.Assert(err, gc.ErrorMatches, "cannot install mongod: packaging command failed: exit status 1.*")
 
+	s.PatchValue(&manager.RunCommandWithRetry, func(string) (string, int, error) {
+		return "", 0, nil
+	})
 	s.PatchValue(&version.Current.Series, "trusty")
 	failCmd(filepath.Join(dir, "mongod"))
 	err = mongo.EnsureServer(makeEnsureServerParams(dir, ""))

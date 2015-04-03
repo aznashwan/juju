@@ -22,6 +22,9 @@ var isPackageInstalled = func(pack string) bool {
 // PackageManager for the current system and checks for package manager proxy
 // settings.
 var detectPackageProxies = func() (proxy.Settings, error) {
-	pacman, _ := manager.NewPackageManager(version.Current.Series)
+	pacman, err := manager.NewPackageManager(version.Current.Series)
+	if err != nil {
+		return proxy.Settings{}, err
+	}
 	return pacman.GetProxySettings()
 }

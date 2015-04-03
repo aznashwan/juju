@@ -91,7 +91,7 @@ func checkIff(checker gc.Checker, condition bool) gc.Checker {
 	return gc.Not(checker)
 }
 
-var aptgetRegexp = "(.|\n)*" + regexp.QuoteMeta("apt-get --assume-yes --option Dpkg::Options::=--force-confold ")
+var aptgetRegexp = "(.|\n)*" + regexp.QuoteMeta("apt-get --option=Dpkg::Options::=--force-confold --option=Dpkg::options::=--force-unsafe-io --assume-yes --quiet ")
 
 func (s *configureSuite) TestAptSources(c *gc.C) {
 	for _, series := range allSeries {
@@ -162,7 +162,7 @@ func (s *configureSuite) TestAptUpdate(c *gc.C) {
 	cfg.SetSystemUpdate(false)
 	source := packaging.PackageSource{
 		Name: "source",
-		Url:  "source",
+		URL:  "source",
 		Key:  "key",
 	}
 	cfg.AddPackageSource(source)
@@ -178,7 +178,7 @@ func (s *configureSuite) TestAptUpgrade(c *gc.C) {
 	cfg.SetSystemUpdate(true)
 	source := packaging.PackageSource{
 		Name: "source",
-		Url:  "source",
+		URL:  "source",
 		Key:  "key",
 	}
 	cfg.AddPackageSource(source)

@@ -63,8 +63,9 @@ func ensureDependencies(series string) error {
 
 	for _, pack := range requiredPackages {
 		pkg := pack
-		if pacconfer.IsCloudArchivePackage(pack) {
-			pkg = strings.Join(pacconfer.ApplyCloudArchiveTarget(pack), "")
+		if config.SeriesRequiresCloudArchiveTools(version.Current.Series) &&
+			pacconfer.IsCloudArchivePackage(pack) {
+			pkg = strings.Join(pacconfer.ApplyCloudArchiveTarget(pack), " ")
 		}
 
 		if err := pacman.Install(pkg); err != nil {

@@ -269,13 +269,11 @@ func (cfg *UbuntuCloudConfig) updatePackages() {
 	// versions of cloud-init (e.g. 0.6.3 in precise) will
 	// interpret incorrectly (see bug http://pad.lv/1424777).
 	for _, pack := range packages {
-		if cfg.pacconfer.IsCloudArchivePackage(pack) {
+		if config.SeriesRequiresCloudArchiveTools(cfg.series) && cfg.pacconfer.IsCloudArchivePackage(pack) {
 			// On precise, we need to pass a --target-release entry in
 			// pieces for it to work:
 			// TODO (aznashwan): figure out what the hell precise wants.
-			for _, p := range cfg.pacconfer.ApplyCloudArchiveTarget(pack) {
-				cfg.AddPackage(p)
-			}
+			cfg.AddPackage(strings.Join(cfg.pacconfer.ApplyCloudArchiveTarget(pack), " "))
 		} else {
 			cfg.AddPackage(pack)
 		}

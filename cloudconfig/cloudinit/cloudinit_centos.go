@@ -9,6 +9,7 @@ package cloudinit
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/juju/utils/packaging"
 	"github.com/juju/utils/packaging/config"
@@ -206,18 +207,13 @@ func (cfg *CentOSCloudConfig) updatePackages() {
 	}
 
 	// The required packages need to come from the correct repo.
-	// For precise, that might require an explicit repo targeting.
-	// We cannot just pass packages below, because
-	// this will generate install commands which older
-	// versions of cloud-init (e.g. 0.6.3 in precise) will
-	// interpret incorrectly (see bug http://pad.lv/1424777).
+	// For CentOS 7, this requires an rpm cloud archive be up.
+	// In the event of the addition of such a repository, its addition should
+	// happen in the utils/packaging/config package whilst leaving the below
+	// code untouched.
 	for _, pack := range packages {
-		if cfg.pacconfer.IsCloudArchivePackage(pack) {
-			// On precise, we need to pass a --target-release entry in
-			// pieces for it to work:
-			for _, p := range cfg.pacconfer.ApplyCloudArchiveTarget(pack) {
-				cfg.AddPackage(p)
-			}
+		if config.SeriesRequiresCloudArchiveTools(cfg.series) && cfg.pacconfer.IsCloudArchivePackage(pack) {
+			cfg.AddPackage(strings.Join(cfg.pacconfer.ApplyCloudArchiveTarget(pack), " "))
 		} else {
 			cfg.AddPackage(pack)
 		}

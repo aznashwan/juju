@@ -18,6 +18,7 @@ import (
 	"github.com/juju/names"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils"
+	"github.com/juju/utils/packaging/commands"
 	pacman "github.com/juju/utils/packaging/manager"
 	gc "gopkg.in/check.v1"
 
@@ -787,11 +788,14 @@ func (s *UpgradeSuite) keyFile() string {
 func (s *UpgradeSuite) assertCommonUpgrades(c *gc.C) {
 	// rsyslog-gnutls should have been installed.
 	cmds := s.getAptCmds()
+
+	paccmder, err := commands.NewPackageCommander(version.Current.Series)
+	c.Assert(err, jc.ErrorIsNil)
+
 	c.Assert(cmds, gc.HasLen, 1)
 	args := cmds[0].Args
-	c.Assert(len(args), jc.GreaterThan, 1)
-	c.Assert(args[0], gc.Equals, "apt-get")
-	c.Assert(args[len(args)-1], gc.Equals, "rsyslog-gnutls")
+
+	c.Assert(args, gc.DeepEquals, strings.Fields(paccmder.InstallCmd("rsyslog-gnutls")))
 }
 
 func (s *UpgradeSuite) assertStateServerUpgrades(c *gc.C) {

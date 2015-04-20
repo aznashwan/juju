@@ -286,6 +286,9 @@ func (s *ContainerSetupSuite) assertContainerInitialised(c *gc.C, ctype instance
 	}
 	s.PatchValue(&provisioner.StartProvisioner, startProvisionerWorker)
 
+	// because this test is catered for precise, we must patch the Series.
+	s.PatchValue(&version.Current.Series, "precise")
+
 	// create a machine to host the container.
 	m, err := s.BackingState.AddOneMachine(state.MachineTemplate{
 		Series:      "precise", // precise requires special apt parameters, so we use that series here.
